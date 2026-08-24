@@ -1,0 +1,49 @@
+workflows:
+  mixcolor-ios-release:
+    name: MIX COLOR! iOS Release
+    max_build_duration: 30
+    integrations:
+      app_store_connect: oddiro_asc_key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.yutaXXX.mixcolor
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+      node: latest
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: npm install
+        script: |
+          npm install
+
+      - name: Capacitor sync (SPM, no CocoaPods)
+        script: |
+          npx cap sync ios
+
+      - name: Set build number from Codemagic build number
+        script: |
+          cd ios/App
+          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $PROJECT_BUILD_NUMBER;/" App.xcodeproj/project.pbxproj
+
+      - name: Apply fetched signing files to Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Build ipa for App Store
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        beta_groups:
+          - App Store Connect Users  # ASC側の実際のInternal Testingグループ名に置き換えてください

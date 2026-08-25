@@ -14,8 +14,12 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
     font-family:'Hiragino Maru Gothic ProN','Rounded Mplus 1c','Hiragino Sans','Yu Gothic',sans-serif;
-    overscroll-behavior:none;}
-  #app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow:hidden;}
+    overscroll-behavior:none; overflow:hidden;}
+  #app{
+    max-width:480px;margin:0 auto;
+    height:100vh; height:100dvh;
+    position:relative;overflow:hidden;
+  }
 
   /* ---------- SPLASH (45章) ---------- */
   #splashScreen{
@@ -36,27 +40,28 @@
   #homeScreen{
     position:absolute; inset:0; display:flex; flex-direction:column;
     background-size:cover; background-position:center;
-    padding: 28px 20px 34px;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 20px calc(18px + env(safe-area-inset-bottom, 0px));
+    overflow:hidden;
   }
-  .home-top{ text-align:center; padding-top: 6px; }
-  .home-logo{ width:70%; max-width:300px; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.12)); }
-  .home-spacer{ flex:1; }
-  .home-actions{ display:flex; flex-direction:column; gap:12px; }
+  .home-top{ text-align:center; padding-top: 2px; flex:0 0 auto; }
+  .home-logo{ width:52%; max-width:220px; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.12)); }
+  .home-spacer{ flex:1 1 auto; min-height:8px; }
+  .home-actions{ display:flex; flex-direction:column; gap:10px; flex:0 0 auto; }
   .home-btn{
-    border:none; border-radius: 24px; padding: 20px 22px; text-align:left; cursor:pointer;
+    border:none; border-radius: 22px; padding: 16px 20px; text-align:left; cursor:pointer;
     color:white; box-shadow: var(--shadow-strong);
     display:flex; align-items:center; justify-content:space-between;
   }
-  .home-btn .t{ font-weight:900; font-size:19px; }
-  .home-btn .s{ font-size:12px; font-weight:700; opacity:0.9; margin-top:3px; }
-  .home-btn .arrow{ font-size:22px; font-weight:900; opacity:0.8; }
-  .home-btn.primary{ background: linear-gradient(120deg, var(--magenta), var(--purple)); padding:24px 22px; }
-  .home-btn.primary .t{ font-size:22px; }
+  .home-btn .t{ font-weight:900; font-size:17px; }
+  .home-btn .s{ font-size:11px; font-weight:700; opacity:0.9; margin-top:2px; }
+  .home-btn .arrow{ font-size:20px; font-weight:900; opacity:0.8; }
+  .home-btn.primary{ background: linear-gradient(120deg, var(--magenta), var(--purple)); padding:20px 20px; }
+  .home-btn.primary .t{ font-size:20px; }
   .home-btn.secondary{ background: linear-gradient(120deg, var(--cyan), #33D0FF); }
-  .home-settings-row{ display:flex; justify-content:center; margin-top:14px; }
+  .home-settings-row{ display:flex; justify-content:center; margin-top:10px; flex:0 0 auto; }
   .home-settings-btn{
-    width:46px; height:46px; border-radius:50%; border:none; background:white;
-    box-shadow: var(--shadow); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    width:42px; height:42px; border-radius:50%; border:none; background:white;
+    box-shadow: var(--shadow); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
 
   /* ---------- 汎用サブ画面 (ひとりで遊ぶ選択・設定) ---------- */

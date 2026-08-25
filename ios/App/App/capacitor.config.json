@@ -1,0 +1,9 @@
+{
+	"appId": "com.yutaXXX.mixcolor",
+	"appName": "MIX COLOR!",
+	"webDir": "www",
+	"ios": {
+		"contentInset": "always"
+	},
+	"packageClassList": []
+}

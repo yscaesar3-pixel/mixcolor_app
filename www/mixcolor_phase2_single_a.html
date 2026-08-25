@@ -93,20 +93,21 @@
   .target-swatch{ width: 100%; height: 140px; border-radius: var(--radius-lg); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04); }
   .prompt-text{ text-align:center; font-weight: 800; font-size: 15px; margin: 14px 0 10px; }
   .prompt-text .accent{ color: var(--purple); }
-  .hand-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .hand-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; padding: 4px; }
   .card-slot{ position: relative; aspect-ratio: 1/1; }
   .color-card{
     width:100%; height:100%; border-radius: var(--radius-md); border: none; cursor: pointer;
     transition: transform 0.12s ease, box-shadow 0.12s ease; box-shadow: 0 3px 8px rgba(0,0,0,0.08); position: relative;
+    box-sizing: border-box;
   }
   .color-card.selected{
-    transform: translateY(-6px) scale(1.05); box-shadow: 0 10px 20px rgba(124,58,237,0.35);
-    outline: 3px solid var(--purple); outline-offset: 2px;
+    transform: translateY(-4px); box-shadow: 0 10px 20px rgba(124,58,237,0.35);
+    outline: 3px solid var(--purple); outline-offset: -3px;
   }
   .check-badge{
-    position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%;
+    position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%;
     background: var(--lime); display:flex; align-items:center; justify-content:center;
-    font-size:12px; font-weight:900; color:#1E1E2E; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    font-size:11px; font-weight:900; color:#1E1E2E; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   }
   .mix-btn{
     width:100%; padding: 16px; border: none; border-radius: 999px; font-weight: 900; font-size: 18px;
@@ -180,6 +181,9 @@
 
   <!-- 難易度選択 -->
   <div id="diffSelectScreen">
+    <div style="text-align:right;margin-bottom:8px;">
+      <button id="homeBtnSingle" style="border:none;background:white;box-shadow:var(--shadow);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;">🏠</button>
+    </div>
     <div class="diff-list" id="diffList"></div>
   </div>
 
@@ -737,6 +741,7 @@ document.getElementById('backBtn').onclick = () => {
 /* =========================================================
    INIT
    ========================================================= */
+document.getElementById('homeBtnSingle').onclick = () => { window.location.href = 'index.html'; };
 showScreen('diffSelect');
 renderDiffSelect();
 </script>

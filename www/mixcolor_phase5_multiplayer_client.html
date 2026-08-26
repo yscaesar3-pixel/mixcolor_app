@@ -12,9 +12,9 @@
     --shadow:0 6px 18px rgba(30,30,46,0.10); --shadow-strong:0 10px 28px rgba(124,58,237,0.25);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);overflow-x:hidden;
     font-family:'Hiragino Maru Gothic ProN','Rounded Mplus 1c','Hiragino Sans','Yu Gothic',sans-serif;}
-  #app{max-width:480px;margin:0 auto;min-height:100vh;padding:18px 18px 34px;}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;padding:18px 18px 34px;overflow-x:hidden;}
   .logo{text-align:center;font-weight:900;font-size:24px;margin-bottom:6px;
     background:linear-gradient(90deg,var(--magenta),var(--purple) 55%,var(--cyan));
     -webkit-background-clip:text;background-clip:text;color:transparent;}
@@ -244,7 +244,7 @@
         <div id="mpTargetSwatch" style="width:100%;height:130px;border-radius:28px;margin-top:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04);"></div>
       </div>
       <div class="prompt-text" id="mpPromptText" style="text-align:center;font-weight:800;font-size:15px;margin-bottom:10px;"></div>
-      <div class="hand-grid" id="mpHandGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;padding:4px;"></div>
+      <div class="hand-grid" id="mpHandGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding:4px;"></div>
       <button class="primary-btn" id="mpMixBtn" disabled>MIX!</button>
     </div>
   </div>
@@ -664,6 +664,10 @@ function renderRoundPlay() {
     const slot = document.createElement('div');
     slot.style.position = 'relative';
     slot.style.aspectRatio = '1/1';
+    slot.style.flex = '0 0 calc(25% - 7.5px)';
+    slot.style.maxWidth = 'calc(25% - 7.5px)';
+    slot.style.minWidth = '0';
+    slot.style.minHeight = '0';
     const btn = document.createElement('button');
     const selected = state.mp.selectedIds.includes(card.id);
     btn.style.cssText = `width:100%;height:100%;border-radius:18px;border:none;cursor:pointer;background:${toHex(card)};box-shadow:0 3px 8px rgba(0,0,0,0.08);box-sizing:border-box;`;

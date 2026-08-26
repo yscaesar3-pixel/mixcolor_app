@@ -43,9 +43,10 @@
     padding: calc(18px + env(safe-area-inset-top, 0px)) 20px calc(18px + env(safe-area-inset-bottom, 0px));
     overflow:hidden;
   }
-  .home-top{ text-align:center; padding-top: 2px; flex:0 0 auto; }
+  .home-top{ text-align:center; padding-top: 10px; flex:0 0 auto; }
   .home-logo{ width:52%; max-width:220px; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.12)); }
-  .home-spacer{ flex:1 1 auto; min-height:8px; }
+  .home-spacer{ flex: 1 1 auto; min-height:8px; }
+  .home-spacer-bottom{ flex: 1.2 1 auto; min-height:8px; }
   .home-actions{ display:flex; flex-direction:column; gap:10px; flex:0 0 auto; }
   .home-btn{
     border:none; border-radius: 22px; padding: 16px 20px; text-align:left; cursor:pointer;
@@ -58,7 +59,7 @@
   .home-btn.primary{ background: linear-gradient(120deg, var(--magenta), var(--purple)); padding:20px 20px; }
   .home-btn.primary .t{ font-size:20px; }
   .home-btn.secondary{ background: linear-gradient(120deg, var(--cyan), #33D0FF); }
-  .home-settings-row{ display:flex; justify-content:center; margin-top:10px; flex:0 0 auto; }
+  .home-settings-row{ display:flex; justify-content:center; flex:0 0 auto; }
   .home-settings-btn{
     width:42px; height:42px; border-radius:50%; border:none; background:white;
     box-shadow: var(--shadow); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
@@ -147,9 +148,10 @@
         <div><div class="t">ひとりで遊ぶ</div><div class="s">練習・暇つぶしに</div></div>
         <div class="arrow">›</div>
       </button>
-      <div class="home-settings-row">
-        <button class="home-settings-btn" id="settingsBtn">⚙️</button>
-      </div>
+    </div>
+    <div class="home-spacer-bottom"></div>
+    <div class="home-settings-row">
+      <button class="home-settings-btn" id="settingsBtn">⚙️</button>
     </div>
   </div>
 

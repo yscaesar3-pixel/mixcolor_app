@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MIX COLOR! - MULTIPLAYER</title>
+<style>
+  :root{
+    --bg:#F7F7F7; --card-bg:#FFFFFF; --ink:#1E1E2E; --sub-ink:#8A8A9A;
+    --magenta:#FF2E9A; --cyan:#00C2FF; --purple:#7C3AED; --yellow:#FFD400; --lime:#A6FF00;
+    --radius-lg:28px; --radius-md:18px;
+    --shadow:0 6px 18px rgba(30,30,46,0.10); --shadow-strong:0 10px 28px rgba(124,58,237,0.25);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);overflow-x:hidden;
+    font-family:'Hiragino Maru Gothic ProN','Rounded Mplus 1c','Hiragino Sans','Yu Gothic',sans-serif;}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;padding:18px 18px 34px;overflow-x:hidden;}
+  .logo{ text-align:center; margin-bottom:10px; }
+  .logo img{ height:40px; max-width:70%; object-fit:contain; }
+  .panel{background:var(--card-bg);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:800;color:var(--sub-ink);margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:13px 14px;border-radius:14px;border:2px solid #ECECF2;font-size:15px;
+    font-weight:700;color:var(--ink);background:#FAFAFC;
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--purple);}
+  .primary-btn{
+    width:100%;padding:16px;border:none;border-radius:999px;font-weight:900;font-size:16px;color:white;
+    cursor:pointer;background:linear-gradient(90deg,var(--magenta),var(--purple) 55%,var(--cyan));
+    box-shadow:var(--shadow-strong);
+  }
+  .primary-btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .secondary-btn{
+    width:100%;padding:15px;border:2px solid #ECECF2;border-radius:999px;font-weight:900;font-size:15px;
+    color:var(--ink);background:white;cursor:pointer;margin-top:10px;
+  }
+  .entry-cards{display:flex;flex-direction:column;gap:12px;}
+  .entry-card{
+    border:none;border-radius:var(--radius-md);padding:20px;text-align:left;cursor:pointer;color:white;
+  }
+  .entry-card.create{background:linear-gradient(135deg,var(--magenta),var(--purple));}
+  .entry-card.join{background:linear-gradient(135deg,var(--cyan),#4CC9FF);}
+  .entry-card .t{font-weight:900;font-size:17px;}
+  .entry-card .s{font-size:12px;opacity:0.9;margin-top:4px;}
+  .back-link{font-size:12px;font-weight:800;color:var(--sub-ink);margin-bottom:14px;cursor:pointer;display:inline-block;}
+  .error-box{
+    background:#FFE6E8;color:#D6273B;border-radius:14px;padding:10px 14px;font-size:13px;font-weight:700;
+    margin-bottom:14px; display:none;
+  }
+  .room-code-box{text-align:center;margin-bottom:16px;}
+  .room-code-label{font-size:11px;font-weight:800;color:var(--sub-ink);letter-spacing:2px;margin-bottom:6px;}
+  .room-code{font-size:36px;font-weight:900;letter-spacing:4px;}
+  .room-meta{font-size:12px;color:var(--sub-ink);font-weight:700;margin-top:6px;}
+  .player-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;}
+  .player-chip{
+    background:#F7F7F7;border-radius:14px;padding:10px 12px;font-weight:800;font-size:13px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .player-chip .crown{font-size:14px;}
+  .waiting-note{text-align:center;font-size:13px;color:var(--sub-ink);font-weight:700;margin-top:10px;}
+
+  /* ---------- 3-2-1 カウントダウン ---------- */
+  .countdown-wrap{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:60vh; text-align:center;
+  }
+  .countdown-ready{ font-weight:900; font-size:20px; color:var(--sub-ink); letter-spacing:3px; margin-bottom:14px; }
+  .countdown-number{
+    font-weight:900; font-size:96px;
+    background: linear-gradient(90deg, var(--magenta), var(--purple) 55%, var(--cyan));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .countdown-go{ font-weight:900; font-size:44px; color:var(--purple); }
+
+  /* ---------- ラウンドプレイ ---------- */
+  .round-status-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .round-counter{ font-weight:900; font-size:14px; }
+  .round-timer{ font-weight:900; font-size:20px; color:var(--purple); }
+  .round-timer.urgent{ color:#D6273B; }
+  .answered-count{ font-size:11px; font-weight:800; color:var(--sub-ink); }
+
+  .waiting-wrap{ text-align:center; padding: 30px 10px; }
+  .waiting-icon{ font-size:44px; margin-bottom:10px; }
+  .waiting-title{ font-weight:900; font-size:18px; margin-bottom:6px; }
+  .waiting-sub{ font-size:13px; color:var(--sub-ink); font-weight:700; }
+  .waiting-progress{ font-weight:900; font-size:15px; color:var(--purple); margin-top:14px; }
+
+  /* ---------- ラウンド結果シーケンス ---------- */
+  .reveal-step-label{ font-size:11px; font-weight:800; color:var(--sub-ink); letter-spacing:2px; text-align:center; margin-bottom:10px; }
+  .reveal-target-row{ text-align:center; margin-bottom:14px; }
+  .reveal-target-swatch{ width:70px; height:70px; border-radius:18px; display:inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .reveal-list{ display:flex; flex-direction:column; gap:10px; }
+  .reveal-row{
+    display:flex; align-items:center; gap:12px; background:#F7F7F7; border-radius:16px; padding:10px 12px;
+    opacity:0; transform: translateY(8px); transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .reveal-row.show{ opacity:1; transform:translateY(0); }
+  .reveal-row.me{ background:#F1E9FF; outline:2px solid var(--purple); }
+  .reveal-rank{ font-weight:900; font-size:15px; width:22px; text-align:center; color:var(--sub-ink); }
+  .reveal-swatch{ width:38px; height:38px; border-radius:10px; flex:0 0 auto; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .reveal-name{ font-weight:800; font-size:13px; flex:1; }
+  .reveal-pct{ font-weight:900; font-size:14px; width:52px; text-align:right; }
+  .reveal-score{ font-weight:900; font-size:13px; width:58px; text-align:right; color:var(--purple); }
+  .reveal-total{ font-weight:900; font-size:13px; width:64px; text-align:right; color:var(--sub-ink); }
+
+  /* ---------- FINAL RESULT ---------- */
+  .final-bg-wrap{
+    border-radius: var(--radius-lg); overflow:hidden; position:relative; margin-bottom:14px;
+    box-shadow: var(--shadow);
+  }
+  .final-bg-img{ width:100%; display:block; }
+  .final-overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 24px;
+  }
+  .final-label{ font-weight:900; font-size:13px; letter-spacing:4px; color:white; text-shadow:0 2px 8px rgba(0,0,0,0.25); }
+  .final-winner-tag{ font-weight:900; font-size:28px; color:white; text-shadow:0 3px 10px rgba(0,0,0,0.3); margin:4px 0 2px; }
+  .final-winner-name{ font-weight:900; font-size:22px; color:white; text-shadow:0 3px 10px rgba(0,0,0,0.3); }
+  .final-ranking{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+  .final-row{
+    display:flex; align-items:center; gap:10px; background:white; border-radius:14px; padding:10px 12px;
+    box-shadow: var(--shadow);
+  }
+  .final-row.top{ background: linear-gradient(90deg,#FFF7DB,#FFFDF2); }
+  .final-row.me{ outline: 2px solid var(--purple); }
+  .final-rank{ font-weight:900; font-size:14px; width:22px; text-align:center; }
+  .final-swatch{ width:32px; height:32px; border-radius:9px; flex:0 0 auto; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+  .final-name{ font-weight:800; font-size:13px; flex:1; }
+  .final-score{ font-weight:900; font-size:14px; }
+  .final-btn-row{ display:flex; gap:10px; margin-top:16px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="logo"><img src="mix_color_logo.png" alt="MIX COLOR!"></div>
+<div class="error-box" id="errorBox"></div>
+
+  <!-- エントリー画面 -->
+  <div id="entryScreen">
+    <div style="text-align:right;margin-bottom:8px;">
+      <button id="homeBtnMulti" style="border:none;background:white;box-shadow:var(--shadow);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;">🏠</button>
+    </div>
+    <div class="entry-cards">
+      <button class="entry-card create" id="toCreateBtn">
+        <div class="t">ルームを作る</div>
+        <div class="s">コードを発行してみんなを招待</div>
+      </button>
+      <button class="entry-card join" id="toJoinBtn">
+        <div class="t">ルームに入る</div>
+        <div class="s">もらったコードで参加</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ルーム作成 -->
+  <div id="createScreen" style="display:none;">
+    <span class="back-link" id="backFromCreate">‹ もどる</span>
+    <div class="panel">
+      <div class="field">
+        <label>プレイヤー名</label>
+        <input type="text" id="createNameInput" maxlength="10" placeholder="ニックネーム">
+      </div>
+      <div class="field">
+        <label>難易度</label>
+        <select id="createDifficultySelect">
+          <option value="EASY">EASY はじめて向け</option>
+          <option value="NORMAL" selected>NORMAL おすすめ</option>
+          <option value="HARD">HARD むずかしい</option>
+          <option value="EXPERT">EXPERT かなりむずかしい</option>
+          <option value="MASTER">MASTER 最高難度</option>
+        </select>
+      </div>
+      <div class="room-meta" style="text-align:center;margin-bottom:16px;">5 ROUND / 20 SEC / 最大8人</div>
+      <button class="primary-btn" id="submitCreateBtn">ルームを作る</button>
+    </div>
+  </div>
+
+  <!-- ルーム参加 -->
+  <div id="joinScreen" style="display:none;">
+    <span class="back-link" id="backFromJoin">‹ もどる</span>
+    <div class="panel">
+      <div class="field">
+        <label>ルームコード</label>
+        <input type="text" id="joinCodeInput" maxlength="6" inputmode="numeric" placeholder="123456">
+      </div>
+      <div class="field">
+        <label>プレイヤー名</label>
+        <input type="text" id="joinNameInput" maxlength="10" placeholder="ニックネーム">
+      </div>
+      <button class="primary-btn" id="submitJoinBtn">参加する</button>
+    </div>
+  </div>
+
+  <!-- ロビー -->
+  <div id="lobbyScreen" style="display:none;">
+    <div class="panel">
+      <div class="room-code-box">
+        <div class="room-code-label">ROOM CODE</div>
+        <div class="room-code" id="lobbyRoomCode">000 000</div>
+        <div class="room-meta" id="lobbyMeta">NORMAL | 5 ROUND | 20 SEC</div>
+        <div class="room-meta">プレイヤー <span id="playerCount">0</span> / 8</div>
+      </div>
+      <div class="player-grid" id="playerGrid"></div>
+      <button class="primary-btn" id="startGameBtn" disabled>ゲーム開始！</button>
+      <div class="waiting-note" id="waitingNote" style="display:none;">ホストの開始を待っています・・・</div>
+      <button class="secondary-btn" id="leaveRoomBtn">ルームを退出</button>
+    </div>
+  </div>
+
+  <!-- 3-2-1 カウントダウン -->
+  <div id="countdownScreen" style="display:none;">
+    <div class="countdown-wrap">
+      <div class="countdown-ready" id="countdownReady">READY?</div>
+      <div class="countdown-number" id="countdownNumber">3</div>
+    </div>
+  </div>
+
+  <!-- ラウンドプレイ -->
+  <div id="roundPlayScreen" style="display:none;">
+    <div class="round-status-row">
+      <span class="round-counter" id="roundCounter">ROUND 1 / 5</span>
+      <span class="round-timer" id="roundTimer">20</span>
+    </div>
+    <div class="panel">
+      <div class="target-wrap" style="text-align:center;margin-bottom:16px;">
+        <div class="room-code-label">TARGET</div>
+        <div id="mpTargetSwatch" style="width:100%;height:130px;border-radius:28px;margin-top:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04);"></div>
+      </div>
+      <div class="prompt-text" id="mpPromptText" style="text-align:center;font-weight:800;font-size:15px;margin-bottom:10px;"></div>
+      <div class="hand-grid" id="mpHandGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding:4px;"></div>
+      <button class="primary-btn" id="mpMixBtn" disabled>MIX!</button>
+    </div>
+  </div>
+
+  <!-- 回答済み・他プレイヤー待ち -->
+  <div id="waitingScreen" style="display:none;">
+    <div class="panel waiting-wrap">
+      <div class="waiting-icon">⏳</div>
+      <div class="waiting-title">回答完了！</div>
+      <div class="waiting-sub">ほかのプレイヤーを待っています</div>
+      <div class="waiting-progress" id="waitingProgress">回答済み 0 / 0</div>
+    </div>
+  </div>
+
+  <!-- ラウンド結果シーケンス -->
+  <div id="roundRevealScreen" style="display:none;">
+    <div class="panel">
+      <div class="reveal-step-label" id="revealStepLabel">ROUND RESULT</div>
+      <div class="reveal-target-row">
+        <div class="reveal-target-swatch" id="revealTargetSwatch"></div>
+      </div>
+      <div class="reveal-list" id="revealList"></div>
+    </div>
+  </div>
+
+  <!-- FINAL RESULT -->
+  <div id="finalResultScreen" style="display:none;">
+    <div class="final-bg-wrap">
+      <img class="final-bg-img" id="finalBgImg" src="mixcolor_final_result_background.png" alt="">
+      <div class="final-overlay">
+        <div class="final-label">FINAL RESULT</div>
+        <div class="final-winner-tag" id="finalWinnerTag">WINNER</div>
+        <div class="final-winner-name" id="finalWinnerName">---</div>
+      </div>
+    </div>
+    <div class="final-ranking" id="finalRanking"></div>
+    <div class="final-btn-row">
+      <button class="secondary-btn" id="leaveAfterFinalBtn" style="margin-top:0;">ルームを退出</button>
+      <button class="primary-btn" id="rematchBtn">もう一度遊ぶ</button>
+    </div>
+    <div class="waiting-note" id="rematchWaitingNote" style="display:none;">ホストの再戦を待っています</div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+/* =========================================================
+   CONFIG - 実際の値に置き換えてください
+   ========================================================= */
+const SUPABASE_URL = 'https://arpkjnbnyyytdcbzeitk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFycGtqbmJueXl5dGRjYnplaXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MDk1NTgsImV4cCI6MjA5OTM4NTU1OH0.wMED0yZ1j6ygAIIPr5zw9As25xx9QqL0YbSICaK6UVo';
+const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 37.4章 FINAL_RESULT_BACKGROUND (軽量化済み)
+
+const LS_ROOM_ID = 'mixcolor_mp_roomId';
+const LS_PLAYER_ID = 'mixcolor_mp_playerId';
+const LS_RECONNECT_TOKEN = 'mixcolor_mp_reconnectToken';
+const LS_LAST_NAME = 'mixcolor_mp_lastName';
+
+let state = {
+  roomId: null,
+  playerId: null,
+  roomChannel: null,
+  playersChannel: null,
+  answersChannel: null,
+  lobbyPollTimerId: null,
+  room: null,          // rooms行のキャッシュ
+  players: [],         // players一覧のキャッシュ (left除く)
+  mp: {                 // マルチプレイ進行中のローカル状態
+    phase: 'idle',       // idle | countdown | playing | waiting | reveal | final
+    localRound: 0,        // このクライアントが今表示している round
+    question: null,        // round_questions_public の当該round行
+    selectedIds: [],
+    countdownTimerId: null,
+    playTimerId: null,
+    pollTimerId: null,
+    revealTimeoutIds: [],
+  },
+};
+
+function toHex({ r, g, b }) {
+  const h = v => Math.round(v).toString(16).padStart(2, '0');
+  return '#' + h(r) + h(g) + h(b);
+}
+function clearMpTimers() {
+  const mp = state.mp;
+  if (mp.countdownTimerId) clearInterval(mp.countdownTimerId);
+  if (mp.playTimerId) clearInterval(mp.playTimerId);
+  if (mp.pollTimerId) clearInterval(mp.pollTimerId);
+  mp.revealTimeoutIds.forEach(id => clearTimeout(id));
+  mp.countdownTimerId = null;
+  mp.playTimerId = null;
+  mp.pollTimerId = null;
+  mp.revealTimeoutIds = [];
+}
+
+function log(...args) {
+  console.log(...args);
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.style.display = msg ? 'block' : 'none';
+}
+
+const ALL_SCREENS = [
+  'entryScreen', 'createScreen', 'joinScreen', 'lobbyScreen',
+  'countdownScreen', 'roundPlayScreen', 'waitingScreen', 'roundRevealScreen', 'finalResultScreen',
+];
+function showScreen(name) {
+  ALL_SCREENS.forEach(id => {
+    document.getElementById(id).style.display = id === name ? '' : 'none';
+  });
+  showError('');
+}
+
+async function callFunction(name, body) {
+  const res = await fetch(`${FUNCTIONS_BASE}/${name}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || '通信に失敗しました。もう一度お試しください');
+  }
+  return data;
+}
+
+/* ---------- 画面遷移 ---------- */
+document.getElementById('toCreateBtn').onclick = () => {
+  document.getElementById('createNameInput').value = localStorage.getItem(LS_LAST_NAME) || '';
+  showScreen('createScreen');
+};
+document.getElementById('toJoinBtn').onclick = () => {
+  document.getElementById('joinNameInput').value = localStorage.getItem(LS_LAST_NAME) || '';
+  showScreen('joinScreen');
+};
+document.getElementById('backFromCreate').onclick = () => showScreen('entryScreen');
+document.getElementById('backFromJoin').onclick = () => showScreen('entryScreen');
+
+/* ---------- ルーム作成 ---------- */
+document.getElementById('submitCreateBtn').onclick = async () => {
+  const name = document.getElementById('createNameInput').value.trim();
+  const difficulty = document.getElementById('createDifficultySelect').value;
+  if (!name) return showError('プレイヤー名を入力してください');
+  try {
+    const data = await callFunction('mixcolor-create-room', { playerName: name, difficulty });
+    localStorage.setItem(LS_LAST_NAME, name);
+    localStorage.setItem(LS_ROOM_ID, data.roomId);
+    localStorage.setItem(LS_PLAYER_ID, data.playerId);
+    localStorage.setItem(LS_RECONNECT_TOKEN, data.reconnectToken);
+    await enterLobby(data.roomId, data.playerId);
+  } catch (e) {
+    showError(e.message);
+    log('mixcolor-create-room error:', e.message);
+  }
+};
+
+/* ---------- ルーム参加 ---------- */
+document.getElementById('submitJoinBtn').onclick = async () => {
+  const code = document.getElementById('joinCodeInput').value.trim();
+  const name = document.getElementById('joinNameInput').value.trim();
+  if (!/^\d{6}$/.test(code)) return showError('6桁のルームコードを入力してください');
+  if (!name) return showError('プレイヤー名を入力してください');
+  try {
+    const data = await callFunction('mixcolor-join-room', { roomCode: code, playerName: name });
+    localStorage.setItem(LS_LAST_NAME, name);
+    localStorage.setItem(LS_ROOM_ID, data.roomId);
+    localStorage.setItem(LS_PLAYER_ID, data.playerId);
+    localStorage.setItem(LS_RECONNECT_TOKEN, data.reconnectToken);
+    await enterLobby(data.roomId, data.playerId);
+  } catch (e) {
+    showError(e.message);
+    log('mixcolor-join-room error:', e.message);
+  }
+};
+
+/* ---------- ロビー入室 ---------- */
+async function enterLobby(roomId, playerId) {
+  state.roomId = roomId;
+  state.playerId = playerId;
+  state.mp.phase = 'idle';
+  state.mp.localRound = 0;
+  showScreen('lobbyScreen');
+  await refreshRoomState();
+  startLobbyPolling();
+}
+
+/* ---------- ルーム状態の取得 & ディスパッチ (状態機械の入口) ---------- */
+async function refreshRoomState() {
+  const reconnectToken = localStorage.getItem(LS_RECONNECT_TOKEN);
+  if (!state.roomId || !state.playerId || !reconnectToken) {
+    throw new Error('RECONNECT_INFORMATION_MISSING');
+  }
+
+  const data = await callFunction('mixcolor-lobby-state', {
+    roomId: state.roomId,
+    playerId: state.playerId,
+    reconnectToken,
+  });
+
+  // 既存の画面描画コードと互換になる形へ変換
+  state.room = {
+    id: data.room.id,
+    room_code: data.room.roomCode,
+    difficulty: data.room.difficulty,
+    status: data.room.status,
+    current_round: data.room.currentRound,
+    max_players: data.room.maxPlayers,
+    host_id: data.room.hostPlayerId,
+  };
+
+  state.players = (data.players || []).map(p => ({
+    id: p.playerId,
+    display_name: p.playerName,
+    is_host: p.isHost,
+    connection_state: p.connectionState,
+    total_score: p.totalScore,
+  }));
+
+  dispatchRoomState();
+}
+
+function startLobbyPolling() {
+  if (state.lobbyPollTimerId) clearInterval(state.lobbyPollTimerId);
+  state.lobbyPollTimerId = setInterval(async () => {
+    if (!state.roomId) return;
+    try {
+      await refreshRoomState();
+    } catch (e) {
+      log('lobby refresh error:', e.message);
+    }
+  }, 2000);
+}
+
+function stopLobbyPolling() {
+  if (state.lobbyPollTimerId) {
+    clearInterval(state.lobbyPollTimerId);
+    state.lobbyPollTimerId = null;
+  }
+}
+
+function dispatchRoomState() {
+  const room = state.room;
+  if (!room) return;
+
+  if (room.status === 'lobby' || room.status === 'rematch_lobby') {
+    if (state.mp.phase !== 'idle') { clearMpTimers(); state.mp.phase = 'idle'; state.mp.localRound = 0; }
+    renderLobbyScreen();
+    showScreen('lobbyScreen');
+    return;
+  }
+
+  if (room.status === 'playing') {
+    if (state.mp.phase === 'idle') { startRoundFlow(room.current_round); return; }
+    if (state.mp.localRound !== room.current_round && state.mp.phase !== 'reveal') {
+      triggerReveal(state.mp.localRound, room.current_round);
+      return;
+    }
+    if (state.mp.phase === 'waiting') renderWaitingProgress();
+    return; // 同一round中の進行はローカルタイマーに任せる
+  }
+
+  if (room.status === 'finished') {
+    if (state.mp.phase !== 'final' && state.mp.phase !== 'reveal') {
+      triggerReveal(state.mp.localRound, null); // 最終ラウンドの結果を見せてからFINALへ
+    }
+    return;
+  }
+}
+
+/* ---------- ロビー画面描画 ---------- */
+function renderLobbyScreen() {
+  const room = state.room, players = state.players;
+  const codeDisplay = room.room_code.slice(0, 3) + ' ' + room.room_code.slice(3); // 15章
+  document.getElementById('lobbyRoomCode').textContent = codeDisplay;
+  document.getElementById('lobbyMeta').textContent = `${room.difficulty} | 5 ROUND | 20 SEC`;
+  document.getElementById('playerCount').textContent = players.length;
+
+  const grid = document.getElementById('playerGrid');
+  grid.innerHTML = '';
+  players.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip';
+    const isMe = p.id === state.playerId;
+    chip.innerHTML = `${p.is_host ? '<span class="crown">👑</span>' : ''}${p.display_name}${isMe ? ' (YOU)' : ''}`;
+    grid.appendChild(chip);
+  });
+
+  const isHost = room.host_id === state.playerId;
+  const startBtn = document.getElementById('startGameBtn');
+  const waitingNote = document.getElementById('waitingNote');
+  if (isHost) {
+    startBtn.style.display = '';
+    waitingNote.style.display = 'none';
+    startBtn.disabled = players.length < 2;
+  } else {
+    startBtn.style.display = 'none';
+    waitingNote.style.display = '';
+  }
+}
+
+function subscribeRealtime() {
+  // RealtimeはRLS/公開設定を整えてから有効化する。
+  // 現在のロビー同期は startLobbyPolling() が担当する。
+}
+
+document.getElementById('startGameBtn').onclick = async () => {
+  try {
+    await callFunction('mixcolor-start-game', { roomId: state.roomId, playerId: state.playerId, reconnectToken: localStorage.getItem(LS_RECONNECT_TOKEN) });
+  } catch (e) {
+    showError(e.message);
+    log('start-game error:', e.message);
+  }
+};
+
+async function doLeaveRoom() {
+  try {
+    await callFunction('mixcolor-leave-room', { roomId: state.roomId, playerId: state.playerId, reconnectToken: localStorage.getItem(LS_RECONNECT_TOKEN) });
+  } catch (e) {
+    log('leave-room error:', e.message);
+  }
+  clearMpTimers();
+  stopLobbyPolling();
+  if (state.roomChannel) supabase.removeChannel(state.roomChannel);
+  if (state.playersChannel) supabase.removeChannel(state.playersChannel);
+  if (state.answersChannel) supabase.removeChannel(state.answersChannel);
+  localStorage.removeItem(LS_ROOM_ID);
+  localStorage.removeItem(LS_PLAYER_ID);
+  localStorage.removeItem(LS_RECONNECT_TOKEN);
+  state.roomId = null; state.playerId = null; state.room = null; state.players = [];
+  state.mp = { phase: 'idle', localRound: 0, question: null, selectedIds: [], countdownTimerId: null, playTimerId: null, pollTimerId: null, revealTimeoutIds: [] };
+  showScreen('entryScreen');
+}
+document.getElementById('leaveRoomBtn').onclick = async () => {
+  if (!confirm('ルームから退出しますか？')) return;
+  await doLeaveRoom();
+};
+document.getElementById('leaveAfterFinalBtn').onclick = async () => {
+  if (!confirm('ルームから退出しますか？')) return;
+  await doLeaveRoom();
+};
+
+/* =========================================================
+   ラウンドプレイ (19-21章)
+   ========================================================= */
+async function loadRoundQuestion(round) {
+  const { data, error } = await supabase
+    .schema('mixcolor')
+    .from('round_questions_public')
+    .select('*')
+    .eq('room_id', state.roomId)
+    .eq('match_number', state.room.match_number)
+    .eq('round', round)
+    .maybeSingle();
+  if (error) log('loadRoundQuestion error:', error.message);
+  return data;
+}
+
+async function startRoundFlow(round) {
+  clearMpTimers();
+  state.mp.localRound = round;
+  state.mp.selectedIds = [];
+  const q = await loadRoundQuestion(round);
+  if (!q) { log('round question not found for round', round); return; }
+  state.mp.question = q;
+  state.mp.phase = 'countdown';
+  showScreen('countdownScreen');
+  runCountdown(q.start_at, () => {
+    state.mp.phase = 'playing';
+    showScreen('roundPlayScreen');
+    renderRoundPlay();
+    runRoundTimer(q.deadline_at);
+  });
+}
+
+function runCountdown(startAtIso, onDone) {
+  const startAt = new Date(startAtIso).getTime();
+  const readyEl = document.getElementById('countdownReady');
+  const numEl = document.getElementById('countdownNumber');
+  numEl.classList.remove('countdown-go');
+  function tick() {
+    const remain = startAt - Date.now();
+    if (remain <= 0) {
+      clearInterval(state.mp.countdownTimerId);
+      state.mp.countdownTimerId = null;
+      readyEl.style.display = 'none';
+      numEl.textContent = 'START!';
+      numEl.classList.add('countdown-go');
+      const id = setTimeout(onDone, 400); // 0.3〜0.5秒のニュートラル区間 (18章)
+      state.mp.revealTimeoutIds.push(id);
+      return;
+    }
+    if (remain > 3000) {
+      readyEl.style.display = '';
+      numEl.textContent = '';
+    } else {
+      readyEl.style.display = 'none';
+      numEl.textContent = String(Math.ceil(remain / 1000));
+    }
+  }
+  tick();
+  state.mp.countdownTimerId = setInterval(tick, 150);
+}
+
+function renderRoundPlay() {
+  const q = state.mp.question;
+  document.getElementById('roundCounter').textContent = `ROUND ${state.mp.localRound} / 5`;
+  document.getElementById('mpTargetSwatch').style.background = toHex(q.target);
+  document.getElementById('mpPromptText').innerHTML = `<span style="color:var(--purple);">${q.required_selection_count}色</span>選んでMIX！`;
+
+  const grid = document.getElementById('mpHandGrid');
+  grid.innerHTML = '';
+  q.hand.forEach(card => {
+    const slot = document.createElement('div');
+    slot.style.position = 'relative';
+    slot.style.aspectRatio = '1/1';
+    slot.style.flex = '0 0 calc(25% - 7.5px)';
+    slot.style.maxWidth = 'calc(25% - 7.5px)';
+    slot.style.minWidth = '0';
+    slot.style.minHeight = '0';
+    const btn = document.createElement('button');
+    const selected = state.mp.selectedIds.includes(card.id);
+    btn.style.cssText = `width:100%;height:100%;border-radius:18px;border:none;cursor:pointer;background:${toHex(card)};box-shadow:0 3px 8px rgba(0,0,0,0.08);box-sizing:border-box;`;
+    if (selected) {
+      btn.style.outline = '3px solid var(--purple)';
+      btn.style.outlineOffset = '-3px';
+      btn.style.transform = 'translateY(-4px)';
+    }
+    btn.onclick = () => onMpCardTap(card.id);
+    slot.appendChild(btn);
+    grid.appendChild(slot);
+  });
+
+  const mixBtn = document.getElementById('mpMixBtn');
+  const ready = state.mp.selectedIds.length === q.required_selection_count;
+  mixBtn.disabled = !ready;
+  mixBtn.onclick = ready ? submitMpAnswer : null;
+}
+
+function onMpCardTap(cardId) {
+  const q = state.mp.question;
+  const idx = state.mp.selectedIds.indexOf(cardId);
+  if (idx >= 0) state.mp.selectedIds.splice(idx, 1);
+  else if (state.mp.selectedIds.length < q.required_selection_count) state.mp.selectedIds.push(cardId);
+  renderRoundPlay();
+}
+
+function runRoundTimer(deadlineAtIso) {
+  const deadline = new Date(deadlineAtIso).getTime();
+  const timerEl = document.getElementById('roundTimer');
+  function tick() {
+    const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    timerEl.textContent = remain;
+    timerEl.classList.toggle('urgent', remain <= 5);
+    if (remain <= 0 && state.mp.phase === 'playing') {
+      // 締切時未回答 = score 0 (20章)。UIは待機画面へ。
+      state.mp.phase = 'waiting';
+      showScreen('waitingScreen');
+      renderWaitingProgress();
+    }
+  }
+  tick();
+  state.mp.playTimerId = setInterval(tick, 250);
+
+  // 締切後、進行を保証するためのフォールバックポーリング
+  state.mp.pollTimerId = setInterval(() => {
+    if (Date.now() >= deadline) {
+      callFunction('advance-round', { roomId: state.roomId }).catch(e => log('advance-round poll:', e.message));
+    }
+  }, 1000);
+}
+
+async function submitMpAnswer() {
+  const q = state.mp.question;
+  try {
+    await callFunction('submit-answer', {
+      roomId: state.roomId,
+      playerId: state.playerId,
+      round: state.mp.localRound,
+      selectedCardIds: state.mp.selectedIds,
+    });
+    state.mp.phase = 'waiting';
+    showScreen('waitingScreen');
+    renderWaitingProgress();
+  } catch (e) {
+    showError(e.message);
+    log('submit-answer error:', e.message);
+  }
+}
+
+async function renderWaitingProgress() {
+  const { data: answers } = await supabase
+    .schema('mixcolor')
+    .from('answers')
+    .select('player_id')
+    .eq('room_id', state.roomId)
+    .eq('match_number', state.room.match_number)
+    .eq('round', state.mp.localRound);
+  const total = state.players.length;
+  const answered = (answers || []).length;
+  const el = document.getElementById('waitingProgress');
+  if (el) el.textContent = `回答済み ${answered} / ${total}`;
+}
+
+/* =========================================================
+   ラウンド結果シーケンス (22章)
+   ========================================================= */
+async function triggerReveal(finishedRound, nextRoundOrNull) {
+  clearMpTimers();
+  state.mp.phase = 'reveal';
+  showScreen('roundRevealScreen');
+
+  const [{ data: answers }, question] = await Promise.all([
+    supabase
+      .schema('mixcolor')
+      .from('answers')
+      .select('*')
+      .eq('room_id', state.roomId)
+      .eq('match_number', state.room.match_number)
+      .eq('round', finishedRound),
+    loadRoundQuestion(finishedRound),
+  ]);
+
+  const answerByPlayer = new Map((answers || []).map(a => [a.player_id, a]));
+  const rows = state.players.map(p => {
+    const a = answerByPlayer.get(p.id);
+    return {
+      playerId: p.id,
+      name: p.display_name,
+      isMe: p.id === state.playerId,
+      mixedColor: a ? a.mixed_color : { r: 210, g: 210, b: 210 },
+      matchPercent: a ? Number(a.match_percent) : 0,
+      roundScore: a ? a.score : 0,
+      totalScore: p.total_score, // 直近取得済みの値 (加算後の最新値は再取得で更新)
+    };
+  });
+
+  document.getElementById('revealTargetSwatch').style.background = question ? toHex(question.target) : '#eee';
+  const listEl = document.getElementById('revealList');
+  const labelEl = document.getElementById('revealStepLabel');
+  listEl.innerHTML = '';
+
+  // 初期表示: 色のみ (22.1章)
+  labelEl.textContent = 'COLOR REVEAL';
+  const displayOrder = rows.slice(); // 最初はjoin順
+  displayOrder.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'reveal-row' + (r.isMe ? ' me' : '');
+    row.dataset.playerId = r.playerId;
+    row.innerHTML = `
+      <div class="reveal-rank"></div>
+      <div class="reveal-swatch" style="background:${toHex(r.mixedColor)}"></div>
+      <div class="reveal-name">${r.name}${r.isMe ? ' (YOU)' : ''}</div>
+      <div class="reveal-pct"></div>
+      <div class="reveal-score"></div>
+      <div class="reveal-total"></div>
+    `;
+    listEl.appendChild(row);
+    const id = setTimeout(() => row.classList.add('show'), 80 * i);
+    state.mp.revealTimeoutIds.push(id);
+  });
+
+  const push = (fn, delay) => { const id = setTimeout(fn, delay); state.mp.revealTimeoutIds.push(id); };
+
+  // 一致率公開 (22.2章)
+  push(() => {
+    labelEl.textContent = 'MATCH %';
+    rows.forEach(r => {
+      const row = listEl.querySelector(`[data-player-id="${r.playerId}"]`);
+      if (row) row.querySelector('.reveal-pct').textContent = r.matchPercent.toFixed(1) + '%';
+    });
+  }, 1200);
+
+  // ラウンド順位へ並び替え + 今回得点 (22.3章)
+  push(() => {
+    labelEl.textContent = 'ROUND RANKING';
+    const sorted = rows.slice().sort((a, b) => b.roundScore - a.roundScore);
+    sorted.forEach((r, i) => {
+      const row = listEl.querySelector(`[data-player-id="${r.playerId}"]`);
+      if (row) {
+        row.querySelector('.reveal-rank').textContent = (i + 1) + '.';
+        row.querySelector('.reveal-score').textContent = '+' + r.roundScore;
+        listEl.appendChild(row); // 再アペンドで順序を反映
+      }
+    });
+  }, 2600);
+
+  // 合計得点加算 + 総合順位 (22.4章)
+  push(async () => {
+    labelEl.textContent = 'TOTAL SCORE';
+    const { data: freshPlayers } = await supabase
+      .schema('mixcolor')
+      .from('players')
+      .select('*')
+      .eq('room_id', state.roomId)
+      .neq('connection_state', 'left');
+    const totalMap = new Map((freshPlayers || []).map(p => [p.id, p.total_score]));
+    rows.forEach(r => { r.totalScore = totalMap.get(r.playerId) ?? r.totalScore; });
+
+    rows.forEach(r => {
+      const row = listEl.querySelector(`[data-player-id="${r.playerId}"]`);
+      if (row) row.querySelector('.reveal-total').textContent = r.totalScore;
+    });
+  }, 4200);
+
+  push(() => {
+    labelEl.textContent = '総合順位';
+    const sortedTotal = rows.slice().sort((a, b) => b.totalScore - a.totalScore);
+    sortedTotal.forEach((r, i) => {
+      const row = listEl.querySelector(`[data-player-id="${r.playerId}"]`);
+      if (row) {
+        row.querySelector('.reveal-rank').textContent = (i + 1) + '.';
+        listEl.appendChild(row);
+      }
+    });
+  }, 5400);
+
+  // 次へ自動進行 (22章 手順7)
+  push(async () => {
+    if (nextRoundOrNull === null) {
+      await enterFinal();
+    } else {
+      await refreshRoomState(); // room.round_start_at を最新化
+      const remain = state.room.round_start_at ? new Date(state.room.round_start_at).getTime() - Date.now() : 0;
+      const id = setTimeout(() => startRoundFlow(nextRoundOrNull), Math.max(0, remain));
+      state.mp.revealTimeoutIds.push(id);
+    }
+  }, 6800);
+}
+
+/* =========================================================
+   FINAL RESULT (23章/43章)
+   ========================================================= */
+async function enterFinal() {
+  state.mp.phase = 'final';
+  const { data: players } = await supabase
+    .schema('mixcolor')
+    .from('players')
+    .select('*')
+    .eq('room_id', state.roomId)
+    .neq('connection_state', 'left');
+  state.players = players || [];
+
+  const sorted = state.players.slice().sort((a, b) => b.total_score - a.total_score);
+  const topScore = sorted.length ? sorted[0].total_score : 0;
+  const winners = sorted.filter(p => p.total_score === topScore);
+
+  document.getElementById('finalWinnerTag').textContent = winners.length > 1 ? 'WINNERS' : 'WINNER';
+  document.getElementById('finalWinnerName').textContent = winners.map(w => w.display_name).join(' / ');
+
+  const rankingEl = document.getElementById('finalRanking');
+  rankingEl.innerHTML = '';
+  sorted.forEach((p, i) => {
+    const row = document.createElement('div');
+    const isMe = p.id === state.playerId;
+    row.className = 'final-row' + (i === 0 ? ' top' : '') + (isMe ? ' me' : '');
+    row.innerHTML = `
+      <div class="final-rank">${i + 1}</div>
+      <div class="final-name">${p.display_name}${isMe ? ' (YOU)' : ''}</div>
+      <div class="final-score">${p.total_score} / 5000</div>
+    `;
+    rankingEl.appendChild(row);
+  });
+
+  const isHost = state.room.host_id === state.playerId;
+  document.getElementById('rematchBtn').style.display = isHost ? '' : 'none';
+  document.getElementById('rematchWaitingNote').style.display = isHost ? 'none' : '';
+
+  showScreen('finalResultScreen');
+}
+
+document.getElementById('rematchBtn').onclick = async () => {
+  try {
+    await callFunction('mixcolor-rematch', { roomId: state.roomId, playerId: state.playerId, reconnectToken: localStorage.getItem(LS_RECONNECT_TOKEN) });
+    // room.status が rematch_lobby に変わり、realtime経由でdispatchRoomStateがロビーへ遷移させる
+  } catch (e) {
+    showError(e.message);
+    log('rematch error:', e.message);
+  }
+};
+
+/* ---------- 起動時: 再接続情報があれば復帰を試みる (25.2章) ---------- */
+document.getElementById('homeBtnMulti').onclick = () => { window.location.href = 'index.html'; };
+(async function init() {
+  const savedRoomId = localStorage.getItem(LS_ROOM_ID);
+  const savedPlayerId = localStorage.getItem(LS_PLAYER_ID);
+  const savedReconnectToken = localStorage.getItem(LS_RECONNECT_TOKEN);
+
+  if (savedRoomId && savedPlayerId && savedReconnectToken) {
+    try {
+      log('保存済みルームへ再接続を試みます');
+      await enterLobby(savedRoomId, savedPlayerId);
+      return;
+    } catch (e) {
+      log('reconnect check failed:', e.message);
+    }
+
+    localStorage.removeItem(LS_ROOM_ID);
+    localStorage.removeItem(LS_PLAYER_ID);
+    localStorage.removeItem(LS_RECONNECT_TOKEN);
+  }
+
+  showScreen('entryScreen');
+})();
+</script>
+</body>
+</html>

@@ -104,12 +104,6 @@
   .reveal-score{ font-weight:900; font-size:13px; width:58px; text-align:right; color:var(--purple); }
   .reveal-total{ font-weight:900; font-size:13px; width:64px; text-align:right; color:var(--sub-ink); }
 
-
-  .in-game-leave-btn{
-    width:100%;padding:12px 14px;border:2px solid #ECECF2;border-radius:999px;font-weight:900;font-size:13px;
-    color:var(--sub-ink);background:white;cursor:pointer;margin-top:12px;
-  }
-
   /* ---------- FINAL RESULT ---------- */
   .final-bg-wrap{
     border-radius: var(--radius-lg); overflow:hidden; position:relative; margin-bottom:14px;
@@ -219,7 +213,6 @@
     <div class="countdown-wrap">
       <div class="countdown-ready" id="countdownReady">READY?</div>
       <div class="countdown-number" id="countdownNumber">3</div>
-      <button class="in-game-leave-btn js-game-leave-btn">ルームを退出</button>
     </div>
   </div>
 
@@ -238,7 +231,6 @@
       <div class="hand-grid" id="mpHandGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding:4px;"></div>
       <button class="primary-btn" id="mpMixBtn" disabled>MIX!</button>
     </div>
-    <button class="in-game-leave-btn js-game-leave-btn">ルームを退出</button>
   </div>
 
   <!-- 回答済み・他プレイヤー待ち -->
@@ -249,7 +241,6 @@
       <div class="waiting-sub">ほかのプレイヤーを待っています</div>
       <div class="waiting-progress" id="waitingProgress">回答済み 0 / 0</div>
     </div>
-    <button class="in-game-leave-btn js-game-leave-btn">ルームを退出</button>
   </div>
 
   <!-- ラウンド結果シーケンス -->
@@ -260,12 +251,7 @@
         <div class="reveal-target-swatch" id="revealTargetSwatch"></div>
       </div>
       <div class="reveal-list" id="revealList"></div>
-      <div id="roundReadyArea" style="margin-top:18px;text-align:center;">
-        <div id="roundReadyProgress" style="font-weight:800;font-size:14px;margin-bottom:10px;">OK 0 / 0</div>
-        <button class="primary-btn" id="roundReadyBtn">OK！</button>
-      </div>
     </div>
-    <button class="in-game-leave-btn js-game-leave-btn">ルームを退出</button>
   </div>
 
   <!-- FINAL RESULT -->
@@ -284,7 +270,6 @@
       <button class="primary-btn" id="rematchBtn">もう一度遊ぶ</button>
     </div>
     <div class="waiting-note" id="rematchWaitingNote" style="display:none;">ホストの再戦を待っています</div>
-    <button class="secondary-btn" id="newRoomAfterFinalBtn" style="display:none;">新しいルームを作る</button>
   </div>
 </div>
 
@@ -318,8 +303,6 @@ const state = {
     advanceBusy: false,
     nextBusy: false,
     revealRound: 0,
-    resultRenderedRound: 0,
-    readyBusy: false,
     finalShown: false,
     revealTimeoutIds: [],
   },
@@ -445,8 +428,6 @@ async function enterRoom(roomId, playerId) {
   state.mp.question = null;
   state.mp.finalShown = false;
   state.mp.revealRound = 0;
-    state.mp.resultRenderedRound = 0;
-    state.mp.readyBusy = false;
   await syncNow();
   startPolling();
 }
@@ -554,8 +535,6 @@ async function syncActiveGame() {
     state.mp.selectedIds = [];
     state.mp.answered = !!data.answered;
     state.mp.revealRound = 0;
-    state.mp.resultRenderedRound = 0;
-    state.mp.readyBusy = false;
     beginRound(round);
   } else {
     state.mp.answered = !!data.answered;
@@ -711,88 +690,23 @@ async function tryAdvanceRound() {
 }
 
 /* ---------- Round result ---------- */
-function resetRoundResultUi(roundNo) {
-  const listEl = document.getElementById('revealList');
-  const labelEl = document.getElementById('revealStepLabel');
-  const targetEl = document.getElementById('revealTargetSwatch');
-  const progressEl = document.getElementById('roundReadyProgress');
-  const btn = document.getElementById('roundReadyBtn');
-
-  // 前ラウンドのDOMを表示前に必ず消す。
-  listEl.innerHTML = '';
-  labelEl.textContent = roundNo ? `ROUND ${roundNo} RESULT` : 'ROUND RESULT';
-  targetEl.style.background = 'transparent';
-  progressEl.textContent = '結果を読み込み中…';
-  btn.disabled = true;
-  btn.textContent = 'OK！';
-}
-
 async function ensureRoundResult() {
   const roundNo = Number(state.room.currentRound || state.mp.roundNumber || 0);
-  const enteringNewResult = state.mp.phase !== 'reveal' || state.mp.revealRound !== roundNo;
-
-  if (enteringNewResult) {
-    clearRoundTimers();
-    state.mp.phase = 'reveal';
-    state.mp.revealRound = roundNo;
-    state.mp.resultRenderedRound = 0;
-    resetRoundResultUi(roundNo);
-    showScreen('roundRevealScreen');
-  }
-
+  if (state.mp.phase === 'reveal' && state.mp.revealRound === roundNo) return;
+  clearRoundTimers();
+  state.mp.phase = 'reveal';
+  state.mp.revealRound = roundNo;
+  showScreen('roundRevealScreen');
   let data;
-
-try {
-  data = await callFunction(
-    'mixcolor-round-result',
-    authBody()
+  try { data = await callFunction('mixcolor-round-result', authBody()); }
+  catch (e) { log('round-result', e); return; }
+  renderRoundResult(data);
+  const id = setTimeout(
+    () => goNextRound().catch(e => log('next-round', e)),
+    6500 + progressionDelayMs(),
   );
-} catch (e) {
-  if (
-    e.code === 'NOT_ROUND_RESULT' ||
-    e.code === 'ROUND_RESULT_NOT_READY'
-  ) {
-    await fetchLobbyState();
-
-    if (
-      state.room.status === 'final_result'
-    ) {
-      await ensureFinalResult();
-      return;
-    }
-
-    if (
-      state.room.status === 'countdown' ||
-      state.room.status === 'playing'
-    ) {
-      await syncActiveGame();
-      return;
-    }
-
-    return;
-  }
-
-  log('round-result', e);
-  return;
+  state.mp.revealTimeoutIds.push(id);
 }
-
-  // ランキング本体は各ラウンド1回だけ描画。以後のポーリングではOK人数だけ更新する。
-  if (state.mp.resultRenderedRound !== roundNo) {
-    renderRoundResult(data);
-    state.mp.resultRenderedRound = roundNo;
-  }
-  renderRoundReady(data);
-
-  // 全員OKになったら、どの参加者からでも安全に次へ進行を試みる。
-  if (data.allReady) {
-  await sleep(progressionDelayMs());
-
-  goNextRound().catch(e => {
-    log('goNextRound from result', e);
-  });
-}
-}
-
 function renderRoundResult(data) {
   const listEl = document.getElementById('revealList');
   const labelEl = document.getElementById('revealStepLabel');
@@ -815,129 +729,19 @@ function renderRoundResult(data) {
     state.mp.revealTimeoutIds.push(id);
   });
 }
-
-function renderRoundReady(data) {
-  const btn = document.getElementById('roundReadyBtn');
-  const progressEl = document.getElementById('roundReadyProgress');
-  const readyCount = Number(data.readyCount || 0);
-  const playerCount = Number(data.playerCount || 0);
-
-  progressEl.textContent = `OK ${readyCount} / ${playerCount}`;
-
-  if (data.allReady) {
-    btn.disabled = true;
-    btn.textContent = '全員OK！';
-  } else if (data.myReady) {
-    btn.disabled = true;
-    btn.textContent = 'OK済み ✓';
-  } else {
-    btn.disabled = state.mp.readyBusy;
-    btn.textContent = state.mp.readyBusy ? '送信中…' : 'OK！';
-  }
-}
-
-document.getElementById('roundReadyBtn').onclick = async () => {
-  if (state.mp.readyBusy || state.mp.phase !== 'reveal') return;
-  state.mp.readyBusy = true;
-  const btn = document.getElementById('roundReadyBtn');
-  btn.disabled = true;
-  btn.textContent = '送信中…';
-  try {
-    const data = await callFunction('mixcolor-ready-next', authBody());
-    // 押した本人は即座に表示を更新する。
-    renderRoundReady({
-      readyCount: data.readyCount,
-      playerCount: data.playerCount,
-      allReady: data.allReady,
-      myReady: true,
-    });
-    if (data.allReady) {
-  await sleep(progressionDelayMs());
-
-  goNextRound().catch(e => {
-    log('goNextRound from ready', e);
-  });
-}
-  } catch (e) {
-    log('ready-next', e);
-    showError(e.message);
-    btn.disabled = false;
-    btn.textContent = 'OK！';
-  } finally {
-    state.mp.readyBusy = false;
-  }
-};
-
 async function goNextRound() {
   if (state.mp.nextBusy) return;
-
   state.mp.nextBusy = true;
-
   try {
     await fetchLobbyState();
-
-    /*
-      別クライアントがすでにFINAL RESULTへ
-      進めていた場合にも対応する。
-    */
-    if (state.room.status === 'final_result') {
-      state.mp.finalShown = false;
-      await ensureFinalResult();
-      return;
-    }
-
-    if (state.room.status !== 'round_result') {
-      return;
-    }
-
-    try {
-      await callFunction(
-        'mixcolor-next-round',
-        authBody(),
-      );
-    } catch (e) {
-      /*
-        同時実行などで先に別端末が
-        状態を進めた場合はエラー扱いにせず
-        最新状態を確認する。
-      */
-      if (
-        e.code !== 'ROUND_RESULT_NOT_ACTIVE' &&
-        e.code !== 'NOT_ROUND_RESULT'
-      ) {
-        throw e;
-      }
-    }
-
-    /*
-      サーバー状態の反映を少し待ちながら、
-      最大数回確認する。
-    */
-    for (let i = 0; i < 6; i++) {
-      await fetchLobbyState();
-
-      if (state.room.status === 'final_result') {
-        state.mp.finalShown = false;
-        await ensureFinalResult();
-        return;
-      }
-
-      if (
-        state.room.status === 'countdown' ||
-        state.room.status === 'playing'
-      ) {
-        await syncActiveGame();
-        return;
-      }
-
-      await sleep(300);
-    }
-
+    if (state.room.status !== 'round_result') return;
+    await callFunction('mixcolor-next-round', authBody());
+    await fetchLobbyState();
+    if (state.room.status === 'final_result') await ensureFinalResult();
+    else await syncActiveGame();
   } catch (e) {
-    log('next-round', e);
-  } finally {
-    state.mp.nextBusy = false;
-  }
+    if (e.code !== 'ROUND_RESULT_NOT_ACTIVE') log('next-round', e);
+  } finally { state.mp.nextBusy = false; }
 }
 
 /* ---------- Final result ---------- */
@@ -970,18 +774,8 @@ function renderFinal(data) {
     rankingEl.appendChild(row);
   });
   const host = isHost();
-  const rematchBtn = document.getElementById('rematchBtn');
-  const rematchWaitingNote = document.getElementById('rematchWaitingNote');
-  const newRoomBtn = document.getElementById('newRoomAfterFinalBtn');
-
-  rematchBtn.style.display = host ? '' : 'none';
-  rematchWaitingNote.style.display = host ? 'none' : '';
-  newRoomBtn.style.display = host ? 'none' : '';
-
-  if (!host) {
-    rematchWaitingNote.textContent =
-      'ホストの再戦を待っています。待たずに新しいルームを作ることもできます';
-  }
+  document.getElementById('rematchBtn').style.display = host ? '' : 'none';
+  document.getElementById('rematchWaitingNote').style.display = host ? 'none' : '';
 }
 
 /* ---------- Leave / rematch ---------- */
@@ -997,8 +791,6 @@ function clearLocalRoomAndReturn() {
   state.mp.selectedIds = [];
   state.mp.finalShown = false;
   state.mp.revealRound = 0;
-    state.mp.resultRenderedRound = 0;
-    state.mp.readyBusy = false;
   showScreen('entryScreen');
 }
 
@@ -1017,18 +809,6 @@ async function doLeaveRoom() {
   }
 }
 
-document.querySelectorAll('.js-game-leave-btn').forEach(btn => {
-  btn.onclick = async () => {
-    if (!confirm('ゲームの途中ですが退出しますか？')) return;
-    btn.disabled = true;
-    try {
-      await doLeaveRoom();
-    } finally {
-      btn.disabled = false;
-    }
-  };
-});
-
 document.getElementById('leaveRoomBtn').onclick = async () => {
   if (!confirm('ルームから退出しますか？')) return;
   await doLeaveRoom();
@@ -1037,26 +817,6 @@ document.getElementById('leaveRoomBtn').onclick = async () => {
 document.getElementById('leaveAfterFinalBtn').onclick = async () => {
   if (!confirm('ルームから退出しますか？')) return;
   await doLeaveRoom();
-};
-
-document.getElementById('newRoomAfterFinalBtn').onclick = async () => {
-  const btn = document.getElementById('newRoomAfterFinalBtn');
-  if (!confirm('現在のルームを退出して、新しいルームを作りますか？')) return;
-
-  btn.disabled = true;
-  try {
-    const lastName = localStorage.getItem(LS_LAST_NAME) || '';
-    const difficulty = state.room?.difficulty || 'NORMAL';
-
-    await doLeaveRoom();
-
-    document.getElementById('createNameInput').value = lastName;
-    document.getElementById('createDifficultySelect').value = difficulty;
-    showError('');
-    showScreen('createScreen');
-  } finally {
-    btn.disabled = false;
-  }
 };
 
 document.getElementById('rematchBtn').onclick = async () => {
@@ -1073,8 +833,6 @@ document.getElementById('rematchBtn').onclick = async () => {
     state.mp.selectedIds = [];
     state.mp.finalShown = false;
     state.mp.revealRound = 0;
-    state.mp.resultRenderedRound = 0;
-    state.mp.readyBusy = false;
     await syncNow();
   } catch (e) {
     showError(e.message);

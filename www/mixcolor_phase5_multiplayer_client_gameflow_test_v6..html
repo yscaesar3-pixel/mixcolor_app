@@ -284,7 +284,6 @@
       <button class="primary-btn" id="rematchBtn">もう一度遊ぶ</button>
     </div>
     <div class="waiting-note" id="rematchWaitingNote" style="display:none;">ホストの再戦を待っています</div>
-    <button class="secondary-btn" id="newRoomAfterFinalBtn" style="display:none;">新しいルームを作る</button>
   </div>
 </div>
 
@@ -970,18 +969,8 @@ function renderFinal(data) {
     rankingEl.appendChild(row);
   });
   const host = isHost();
-  const rematchBtn = document.getElementById('rematchBtn');
-  const rematchWaitingNote = document.getElementById('rematchWaitingNote');
-  const newRoomBtn = document.getElementById('newRoomAfterFinalBtn');
-
-  rematchBtn.style.display = host ? '' : 'none';
-  rematchWaitingNote.style.display = host ? 'none' : '';
-  newRoomBtn.style.display = host ? 'none' : '';
-
-  if (!host) {
-    rematchWaitingNote.textContent =
-      'ホストの再戦を待っています。待たずに新しいルームを作ることもできます';
-  }
+  document.getElementById('rematchBtn').style.display = host ? '' : 'none';
+  document.getElementById('rematchWaitingNote').style.display = host ? 'none' : '';
 }
 
 /* ---------- Leave / rematch ---------- */
@@ -1037,26 +1026,6 @@ document.getElementById('leaveRoomBtn').onclick = async () => {
 document.getElementById('leaveAfterFinalBtn').onclick = async () => {
   if (!confirm('ルームから退出しますか？')) return;
   await doLeaveRoom();
-};
-
-document.getElementById('newRoomAfterFinalBtn').onclick = async () => {
-  const btn = document.getElementById('newRoomAfterFinalBtn');
-  if (!confirm('現在のルームを退出して、新しいルームを作りますか？')) return;
-
-  btn.disabled = true;
-  try {
-    const lastName = localStorage.getItem(LS_LAST_NAME) || '';
-    const difficulty = state.room?.difficulty || 'NORMAL';
-
-    await doLeaveRoom();
-
-    document.getElementById('createNameInput').value = lastName;
-    document.getElementById('createDifficultySelect').value = difficulty;
-    showError('');
-    showScreen('createScreen');
-  } finally {
-    btn.disabled = false;
-  }
 };
 
 document.getElementById('rematchBtn').onclick = async () => {

@@ -6,6 +6,7 @@
 		"contentInset": "always"
 	},
 	"packageClassList": [
+		"AdMobPlugin",
 		"AppPlugin",
 		"HapticsPlugin"
 	]

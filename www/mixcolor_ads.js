@@ -89,6 +89,15 @@
         // ATT APIは意図的に一切呼ばない。
         let consentInfo = await AdMob.requestConsentInfo();
 
+        console.log('[MIX COLOR][UMP] consentInfo:', consentInfo);
+
+alert(
+  'UMP status: ' + consentInfo.status +
+  '\ncanRequestAds: ' + consentInfo.canRequestAds +
+  '\nformAvailable: ' + consentInfo.isConsentFormAvailable +
+  '\nprivacyOptions: ' + consentInfo.privacyOptionsRequirementStatus
+);
+
         if (
           consentInfo?.isConsentFormAvailable &&
           consentInfo?.status === 'REQUIRED'

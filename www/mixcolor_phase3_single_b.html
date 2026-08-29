@@ -414,6 +414,7 @@ const seFiles = {
   start: 'se_start.mp3',
   perfect: 'se_perfect.mp3',
   final: 'se_final.mp3',
+  wrong: 'se_wrong.wav',
 };
 
 const seAudio = {};
@@ -479,6 +480,50 @@ function unlockAudio() {
   document.addEventListener(evt, unlockAudio, { once: true, capture: true });
 });
 
+
+/* ---------- App lifecycle: background / screen lock stops BGM ---------- */
+let mixcolorNativeAppPlugin = null;
+
+function pauseBgmForInactiveApp() {
+  bgmHome.pause(); bgmGame.pause();
+}
+
+function resumeBgmForActiveApp() {
+  switchBgm(desiredBgm || 'home');
+}
+
+function installAppLifecycleHandlers() {
+  const cap = window.Capacitor;
+  mixcolorNativeAppPlugin =
+    cap?.Plugins?.App ||
+    (typeof cap?.registerPlugin === 'function' ? cap.registerPlugin('App') : null);
+
+  if (mixcolorNativeAppPlugin && typeof mixcolorNativeAppPlugin.addListener === 'function') {
+    try {
+      mixcolorNativeAppPlugin.addListener('appStateChange', (state) => {
+        if (state && state.isActive === false) pauseBgmForInactiveApp();
+        else if (state && state.isActive === true) resumeBgmForActiveApp();
+      });
+      mixcolorNativeAppPlugin.addListener('pause', pauseBgmForInactiveApp);
+      mixcolorNativeAppPlugin.addListener('resume', resumeBgmForActiveApp);
+    } catch (e) {
+      console.warn('[MIX COLOR] App lifecycle:', e);
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseBgmForInactiveApp();
+    else resumeBgmForActiveApp();
+  });
+  window.addEventListener('pagehide', pauseBgmForInactiveApp);
+  window.addEventListener('blur', pauseBgmForInactiveApp);
+  window.addEventListener('focus', () => {
+    if (!document.hidden) resumeBgmForActiveApp();
+  });
+}
+
+installAppLifecycleHandlers();
+
 async function hapticFeedback(kind = 'light') {
   if (!(SettingsFlags.hapticsOn)) return;
 
@@ -489,85 +534,52 @@ async function hapticFeedback(kind = 'light') {
       (typeof cap?.registerPlugin === 'function' ? cap.registerPlugin('Haptics') : null);
 
     if (Haptics) {
-      if (kind === 'success' && Haptics.notification) {
+      if (kind === 'success' && typeof Haptics.notification === 'function') {
         await Haptics.notification({ type: 'SUCCESS' });
         return;
       }
-      if (kind === 'failure' && Haptics.notification) {
+      if (kind === 'failure' && typeof Haptics.notification === 'function') {
         await Haptics.notification({ type: 'ERROR' });
         return;
       }
-      if (Haptics.impact) {
-        const style =
-          kind === 'medium' ? 'MEDIUM' :
-          kind === 'heavy' ? 'HEAVY' : 'LIGHT';
+      if (typeof Haptics.impact === 'function') {
+        const style = kind === 'medium' ? 'MEDIUM' : kind === 'heavy' ? 'HEAVY' : 'LIGHT';
         await Haptics.impact({ style });
         return;
       }
-      if (Haptics.vibrate) {
+      if (typeof Haptics.vibrate === 'function') {
         await Haptics.vibrate({ duration: kind === 'medium' ? 80 : 45 });
         return;
       }
     }
   } catch (e) {
-    console.warn('[MIX COLOR] Haptics error:', e);
+    console.warn('[MIX COLOR] Haptics:', e);
   }
 
-  // ブラウザ確認用フォールバック（iOS Safariでは通常未対応）
+  // Browser fallback. iOS Safari normally does not support navigator.vibrate.
   if ('vibrate' in navigator) {
-    const fallback = {
+    const patterns = {
       light: 12,
       medium: 35,
       heavy: 55,
       success: [18, 28, 18],
       failure: [45, 30, 70],
     };
-    try { navigator.vibrate(fallback[kind] ?? 12); } catch (_) {}
+    try { navigator.vibrate(patterns[kind] ?? 12); } catch (_) {}
   }
 }
 
-
-function playWrongSe() {
-  if (!SettingsFlags.soundOn) return;
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    if (!window.__mixcolorWrongAudioCtx) window.__mixcolorWrongAudioCtx = new Ctx();
-    const ctx = window.__mixcolorWrongAudioCtx;
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-
-    const now = ctx.currentTime;
-    const gain = ctx.createGain();
-    const osc = ctx.createOscillator();
-
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(125, now + 0.24);
-
-    const peak = Math.max(0.02, 0.12 * (SE_VOLUME / 0.65));
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(peak, now + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
-
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.28);
-  } catch (_) {}
-}
-
-function playResultFeedback(label, extraFailure = false) {
-  if (label === 'PERFECT') {
-    playSe('perfect');
+function playResultFeedback(label, isCorrectChoice, extraFailure = false) {
+  if (isCorrectChoice) {
+    if (label === 'PERFECT') playSe('perfect');
+    else playSe('result');
     hapticFeedback('success');
-  } else if (label === 'MISS') {
-    playWrongSe();
-    hapticFeedback('failure');
   } else {
-    playSe('result');
-    hapticFeedback('light');
+    playSe('wrong');
+    hapticFeedback('failure');
   }
 
-  if (extraFailure && label !== 'MISS') {
+  if (extraFailure && isCorrectChoice) {
     setTimeout(() => hapticFeedback('failure'), 220);
   }
 }
@@ -1024,6 +1036,14 @@ function onMix() {
   const match = matchPercent(mixed, round.target);
   const label = matchLabel(match);
   const score = Math.round(match * 10);
+  const correctIds = round.correctIdxs
+    .map(i => game.hand[i]?.id)
+    .filter(Boolean);
+  const selectedSet = new Set(game.selectedIds);
+  const isCorrectChoice =
+    correctIds.length === round.selectCount &&
+    selectedSet.size === round.selectCount &&
+    correctIds.every(id => selectedSet.has(id));
 
   const lifeLost = match < CLEAR_THRESHOLD;
   if (lifeLost) game.lives -= 1;
@@ -1042,10 +1062,10 @@ function onMix() {
   }
   game.hand = [...remainingHand, ...newCards];
 
-  game.lastResult = { mixed, match, label, score, lifeLost };
+  game.lastResult = { mixed, match, label, score, lifeLost, isCorrectChoice };
   showScreen('roundResult');
   renderRoundResult();
-  setTimeout(() => playResultFeedback(label, lifeLost), 200);
+  setTimeout(() => playResultFeedback(label, isCorrectChoice, lifeLost), 200);
 }
 
 function renderRoundResult() {

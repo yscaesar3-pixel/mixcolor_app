@@ -41,7 +41,7 @@
     position:absolute; inset:0; display:flex; flex-direction:column;
     background-image:url("mixcolor_home_background.png");
     background-size:cover; background-position:center;
-    padding: calc(18px + env(safe-area-inset-top, 0px)) 20px calc(18px + env(safe-area-inset-bottom, 0px));
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 20px calc(72px + env(safe-area-inset-bottom, 0px));
     overflow:hidden;
   }
   .home-top{ text-align:center; padding-top: 10px; flex:0 0 auto; }
@@ -287,18 +287,60 @@ const AudioManager = (() => {
 
   document.addEventListener('pointerdown', unlock, { capture: true, once: true });
   document.addEventListener('touchstart', unlock, { capture: true, once: true });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) home.pause();
-    else playDesired();
-  });
 
   function setVolume(v) {
     Settings.setBgmVolume(v);
     home.volume = Settings.bgmVolume;
   }
 
-  return { setScene, setEnabled, setVolume, unlock };
+  function pauseForAppState() { home.pause(); }
+  function resumeForAppState() { playDesired(); }
+
+  return { setScene, setEnabled, setVolume, unlock, pauseForAppState, resumeForAppState };
 })();
+
+/* ---------- App lifecycle: background / screen lock stops BGM ---------- */
+let mixcolorNativeAppPlugin = null;
+
+function pauseBgmForInactiveApp() {
+  AudioManager.pauseForAppState();
+}
+
+function resumeBgmForActiveApp() {
+  AudioManager.resumeForAppState();
+}
+
+function installAppLifecycleHandlers() {
+  const cap = window.Capacitor;
+  mixcolorNativeAppPlugin =
+    cap?.Plugins?.App ||
+    (typeof cap?.registerPlugin === 'function' ? cap.registerPlugin('App') : null);
+
+  if (mixcolorNativeAppPlugin && typeof mixcolorNativeAppPlugin.addListener === 'function') {
+    try {
+      mixcolorNativeAppPlugin.addListener('appStateChange', (state) => {
+        if (state && state.isActive === false) pauseBgmForInactiveApp();
+        else if (state && state.isActive === true) resumeBgmForActiveApp();
+      });
+      mixcolorNativeAppPlugin.addListener('pause', pauseBgmForInactiveApp);
+      mixcolorNativeAppPlugin.addListener('resume', resumeBgmForActiveApp);
+    } catch (e) {
+      console.warn('[MIX COLOR] App lifecycle:', e);
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseBgmForInactiveApp();
+    else resumeBgmForActiveApp();
+  });
+  window.addEventListener('pagehide', pauseBgmForInactiveApp);
+  window.addEventListener('blur', pauseBgmForInactiveApp);
+  window.addEventListener('focus', () => {
+    if (!document.hidden) resumeBgmForActiveApp();
+  });
+}
+
+installAppLifecycleHandlers();
 
 const SE_SOURCES = {
   tap: 'se_tap.mp3',
@@ -350,40 +392,38 @@ async function hapticFeedback(kind = 'light') {
       (typeof cap?.registerPlugin === 'function' ? cap.registerPlugin('Haptics') : null);
 
     if (Haptics) {
-      if (kind === 'success' && Haptics.notification) {
+      if (kind === 'success' && typeof Haptics.notification === 'function') {
         await Haptics.notification({ type: 'SUCCESS' });
         return;
       }
-      if (kind === 'failure' && Haptics.notification) {
+      if (kind === 'failure' && typeof Haptics.notification === 'function') {
         await Haptics.notification({ type: 'ERROR' });
         return;
       }
-      if (Haptics.impact) {
-        const style =
-          kind === 'medium' ? 'MEDIUM' :
-          kind === 'heavy' ? 'HEAVY' : 'LIGHT';
+      if (typeof Haptics.impact === 'function') {
+        const style = kind === 'medium' ? 'MEDIUM' : kind === 'heavy' ? 'HEAVY' : 'LIGHT';
         await Haptics.impact({ style });
         return;
       }
-      if (Haptics.vibrate) {
+      if (typeof Haptics.vibrate === 'function') {
         await Haptics.vibrate({ duration: kind === 'medium' ? 80 : 45 });
         return;
       }
     }
   } catch (e) {
-    console.warn('[MIX COLOR] Haptics error:', e);
+    console.warn('[MIX COLOR] Haptics:', e);
   }
 
-  // ブラウザ確認用フォールバック（iOS Safariでは通常未対応）
+  // Browser fallback. iOS Safari normally does not support navigator.vibrate.
   if ('vibrate' in navigator) {
-    const fallback = {
+    const patterns = {
       light: 12,
       medium: 35,
       heavy: 55,
       success: [18, 28, 18],
       failure: [45, 30, 70],
     };
-    try { navigator.vibrate(fallback[kind] ?? 12); } catch (_) {}
+    try { navigator.vibrate(patterns[kind] ?? 12); } catch (_) {}
   }
 }
 

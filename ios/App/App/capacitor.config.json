@@ -5,5 +5,8 @@
 	"ios": {
 		"contentInset": "always"
 	},
-	"packageClassList": []
+	"packageClassList": [
+		"AppPlugin",
+		"HapticsPlugin"
+	]
 }

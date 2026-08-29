@@ -340,31 +340,50 @@ const SE = {
   final: () => playSE('final', 0.68),
 };
 
-function hapticFeedback(kind = 'light') {
-  if (!Settings.hapticsOn) return;
+async function hapticFeedback(kind = 'light') {
+  if (!(Settings.hapticsOn)) return;
 
-  const capHaptics = window.Capacitor?.Plugins?.Haptics;
-  if (capHaptics) {
-    try {
-      if (kind === 'success') {
-        capHaptics.notification({ type: 'SUCCESS' }).catch(() => {});
-      } else if (kind === 'failure') {
-        capHaptics.notification({ type: 'WARNING' }).catch(() => {});
-      } else {
-        capHaptics.impact({ style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' }).catch(() => {});
+  try {
+    const cap = window.Capacitor;
+    const Haptics =
+      cap?.Plugins?.Haptics ||
+      (typeof cap?.registerPlugin === 'function' ? cap.registerPlugin('Haptics') : null);
+
+    if (Haptics) {
+      if (kind === 'success' && Haptics.notification) {
+        await Haptics.notification({ type: 'SUCCESS' });
+        return;
       }
-      return;
-    } catch (_) {}
+      if (kind === 'failure' && Haptics.notification) {
+        await Haptics.notification({ type: 'ERROR' });
+        return;
+      }
+      if (Haptics.impact) {
+        const style =
+          kind === 'medium' ? 'MEDIUM' :
+          kind === 'heavy' ? 'HEAVY' : 'LIGHT';
+        await Haptics.impact({ style });
+        return;
+      }
+      if (Haptics.vibrate) {
+        await Haptics.vibrate({ duration: kind === 'medium' ? 80 : 45 });
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[MIX COLOR] Haptics error:', e);
   }
 
+  // ブラウザ確認用フォールバック（iOS Safariでは通常未対応）
   if ('vibrate' in navigator) {
     const fallback = {
-      light: 8,
-      medium: 20,
-      success: [15, 30, 15],
-      failure: 40,
+      light: 12,
+      medium: 35,
+      heavy: 55,
+      success: [18, 28, 18],
+      failure: [45, 30, 70],
     };
-    try { navigator.vibrate(fallback[kind] ?? 8); } catch (_) {}
+    try { navigator.vibrate(fallback[kind] ?? 12); } catch (_) {}
   }
 }
 

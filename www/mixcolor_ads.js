@@ -4,7 +4,7 @@
   const PROD_BANNER_ID = 'ca-app-pub-8174756915786797/4813684806';
 
   // 実機確認中は true。提出用ビルドへ切り替える直前に false に変更する。
-  const TEST_MODE = true;
+  const TEST_MODE = false;
 
   const state = {
     plugin: null,
@@ -88,15 +88,6 @@
 
         // ATT APIは意図的に一切呼ばない。
         let consentInfo = await AdMob.requestConsentInfo();
-
-        console.log('[MIX COLOR][UMP] consentInfo:', consentInfo);
-
-alert(
-  'UMP status: ' + consentInfo.status +
-  '\ncanRequestAds: ' + consentInfo.canRequestAds +
-  '\nformAvailable: ' + consentInfo.isConsentFormAvailable +
-  '\nprivacyOptions: ' + consentInfo.privacyOptionsRequirementStatus
-);
 
         if (
           consentInfo?.isConsentFormAvailable &&

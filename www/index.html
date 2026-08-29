@@ -115,6 +115,12 @@
     font-size:11px; font-weight:700; color:var(--sub-ink); letter-spacing:1px; z-index:999;
   }
   body.ad-padded #app{ padding-bottom:50px; }
+
+  .settings-volume{ padding:14px 4px 16px; border-bottom:1px solid #F0F0F5; }
+  .settings-volume-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
+  .settings-value{ font-size:12px; font-weight:900; color:var(--purple); }
+  .settings-range{ width:100%; accent-color:var(--purple); }
+
 </style>
 </head>
 <body class="ad-padded">
@@ -190,15 +196,29 @@
     </div>
     <div class="panel">
       <div class="settings-row">
+        <div class="settings-label">BGM</div>
+        <button class="toggle" id="bgmToggle"><div class="knob"></div></button>
+      </div>
+      <div class="settings-volume">
+        <div class="settings-volume-head"><div class="settings-label">BGM音量</div><div class="settings-value" id="bgmVolumeValue">25%</div></div>
+        <input class="settings-range" id="bgmVolumeSlider" type="range" min="0" max="100" step="5">
+      </div>
+      <div class="settings-row">
         <div class="settings-label">効果音</div>
         <button class="toggle" id="soundToggle"><div class="knob"></div></button>
+      </div>
+      <div class="settings-volume">
+        <div class="settings-volume-head"><div class="settings-label">効果音量</div><div class="settings-value" id="seVolumeValue">65%</div></div>
+        <input class="settings-range" id="seVolumeSlider" type="range" min="0" max="100" step="5">
       </div>
       <div class="settings-row">
         <div class="settings-label">振動 (Haptics)</div>
         <button class="toggle" id="hapticsToggle"><div class="knob"></div></button>
       </div>
       <div class="settings-note">
-        初期版ではこの2項目のみです（44章）。BGM・色覚設定・プレイヤー名設定は含みません。
+        BGM・効果音・振動の設定はこの端末に保存されます。<br><br>
+        BGM：「パステルハウス」by かずち / 「SUMMER TRIANGLE」by しゃろう<br>
+        Music: DOVA-SYNDROME
       </div>
     </div>
   </div>
@@ -208,73 +228,144 @@
 <script>
 
 /* =========================================================
-   共通 SE / Haptics モジュール
-   他のPhaseファイルにもそのままコピーして使える想定。
+   Audio / Haptics
    ========================================================= */
+const LS_BGM = 'mixcolor_settings_bgm';
 const LS_SOUND = 'mixcolor_settings_sound';
 const LS_HAPTICS = 'mixcolor_settings_haptics';
+const LS_BGM_VOLUME = 'mixcolor_settings_bgm_volume';
+const LS_SE_VOLUME = 'mixcolor_settings_se_volume';
 
 const Settings = {
-  soundOn: localStorage.getItem(LS_SOUND) !== 'off',   // 初期値: on
-  hapticsOn: localStorage.getItem(LS_HAPTICS) !== 'off', // 初期値: on
+  bgmOn: localStorage.getItem(LS_BGM) !== 'off',
+  soundOn: localStorage.getItem(LS_SOUND) !== 'off',
+  hapticsOn: localStorage.getItem(LS_HAPTICS) !== 'off',
+  bgmVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_BGM_VOLUME) ?? 0.25))),
+  seVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_SE_VOLUME) ?? 0.65))),
+  setBgm(on) { this.bgmOn = on; localStorage.setItem(LS_BGM, on ? 'on' : 'off'); },
   setSound(on) { this.soundOn = on; localStorage.setItem(LS_SOUND, on ? 'on' : 'off'); },
   setHaptics(on) { this.hapticsOn = on; localStorage.setItem(LS_HAPTICS, on ? 'on' : 'off'); },
+  setBgmVolume(v) { this.bgmVolume = Math.max(0, Math.min(1, Number(v))); localStorage.setItem(LS_BGM_VOLUME, String(this.bgmVolume)); },
+  setSeVolume(v) { this.seVolume = Math.max(0, Math.min(1, Number(v))); localStorage.setItem(LS_SE_VOLUME, String(this.seVolume)); },
 };
 
-// --- SE: Web Audio APIでプロシージャルに生成 (著作権のある音源を使わない) ---
-let audioCtx = null;
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-function playTone(freqStart, freqEnd, durationMs, type = 'sine', gainPeak = 0.18) {
+const AudioManager = (() => {
+  const home = new Audio('bgm_home.mp3');
+  home.loop = true;
+  home.preload = 'auto';
+  home.volume = Settings.bgmVolume;
+
+  let unlocked = false;
+  let desired = 'home';
+
+  function playDesired() {
+    if (!unlocked || !Settings.bgmOn || document.hidden) return;
+    if (desired === 'home' && home.paused) {
+      home.play().catch(() => {});
+    }
+  }
+
+  function unlock() {
+    unlocked = true;
+    playDesired();
+  }
+
+  function setScene(scene) {
+    desired = scene;
+    if (scene !== 'home' || !Settings.bgmOn) {
+      home.pause();
+      return;
+    }
+    playDesired();
+  }
+
+  function setEnabled(on) {
+    Settings.setBgm(on);
+    if (!on) home.pause();
+    else playDesired();
+  }
+
+  document.addEventListener('pointerdown', unlock, { capture: true, once: true });
+  document.addEventListener('touchstart', unlock, { capture: true, once: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) home.pause();
+    else playDesired();
+  });
+
+  function setVolume(v) {
+    Settings.setBgmVolume(v);
+    home.volume = Settings.bgmVolume;
+  }
+
+  return { setScene, setEnabled, setVolume, unlock };
+})();
+
+const SE_SOURCES = {
+  tap: 'se_tap.mp3',
+  select: 'se_select.mp3',
+  mix: 'se_mix.mp3',
+  result: 'se_result.mp3',
+  countdown: 'se_countdown.mp3',
+  start: 'se_start.mp3',
+  perfect: 'se_perfect.mp3',
+  final: 'se_final.mp3',
+};
+
+const seTemplates = {};
+Object.entries(SE_SOURCES).forEach(([key, src]) => {
+  const a = new Audio(src);
+  a.preload = 'auto';
+  seTemplates[key] = a;
+});
+
+function playSE(key, volume = 0.65) {
   if (!Settings.soundOn) return;
+  const template = seTemplates[key];
+  if (!template) return;
   try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(freqStart, now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), now + durationMs / 1000);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(gainPeak, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + durationMs / 1000);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + durationMs / 1000 + 0.02);
-  } catch (e) { /* AudioContext未対応環境などは無視 */ }
+    const a = template.cloneNode(true);
+    a.volume = Math.max(0, Math.min(1, volume * (Settings.seVolume / 0.65)));
+    a.play().catch(() => {});
+  } catch (_) {}
 }
+
 const SE = {
-  buttonTap: () => playTone(520, 520, 40, 'sine', 0.12),
-  cardSelect: () => playTone(700, 900, 70, 'sine', 0.14),
-  mix: () => playTone(300, 900, 260, 'triangle', 0.2),
-  answerConfirm: () => playTone(500, 300, 120, 'sine', 0.16),
-  clear: () => playTone(600, 800, 150, 'sine', 0.16),
-  good: () => playTone(700, 1000, 180, 'sine', 0.18),
-  great: () => { playTone(700, 1050, 140, 'sine', 0.18); setTimeout(() => playTone(1050, 1300, 160, 'sine', 0.18), 100); },
-  perfect: () => {
-    [0, 90, 180].forEach((delay, i) => setTimeout(() => playTone(700 + i * 220, 1000 + i * 260, 180, 'sine', 0.2), delay));
-  },
-  rankingReveal: () => playTone(500, 700, 90, 'sine', 0.12),
-  finalWin: () => { [0, 120, 240, 360].forEach((delay, i) => setTimeout(() => playTone(600 + i * 150, 900 + i * 150, 200, 'triangle', 0.2), delay)); },
-  timeoutError: () => playTone(220, 140, 220, 'sawtooth', 0.12),
+  buttonTap: () => playSE('tap', 0.55),
+  cardSelect: () => playSE('select', 0.58),
+  mix: () => playSE('mix', 0.68),
+  result: () => playSE('result', 0.62),
+  countdown: () => playSE('countdown', 0.58),
+  start: () => playSE('start', 0.68),
+  perfect: () => playSE('perfect', 0.72),
+  final: () => playSE('final', 0.68),
 };
 
-// --- Haptics: Web標準のVibration APIでベストエフォート ---
-// 実機(Capacitor)ビルドでは @capacitor/haptics の ImpactStyle.Light/Medium や
-// NotificationType.Success/Error に置き換える想定 (50章)。iOS Safari単体ではvibrate非対応。
-function hapticFeedback(kind) {
+function hapticFeedback(kind = 'light') {
   if (!Settings.hapticsOn) return;
-  if (!('vibrate' in navigator)) return; // iOS Safari等は非対応。Capacitor版で本実装に差し替え。
-  const patterns = {
-    light: 8,
-    medium: 20,
-    success: [15, 30, 15],
-    failure: 40,
-  };
-  try { navigator.vibrate(patterns[kind] ?? 10); } catch (e) { /* noop */ }
+
+  const capHaptics = window.Capacitor?.Plugins?.Haptics;
+  if (capHaptics) {
+    try {
+      if (kind === 'success') {
+        capHaptics.notification({ type: 'SUCCESS' }).catch(() => {});
+      } else if (kind === 'failure') {
+        capHaptics.notification({ type: 'WARNING' }).catch(() => {});
+      } else {
+        capHaptics.impact({ style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' }).catch(() => {});
+      }
+      return;
+    } catch (_) {}
+  }
+
+  if ('vibrate' in navigator) {
+    const fallback = {
+      light: 8,
+      medium: 20,
+      success: [15, 30, 15],
+      failure: 40,
+    };
+    try { navigator.vibrate(fallback[kind] ?? 8); } catch (_) {}
+  }
 }
 
 /* =========================================================
@@ -330,10 +421,51 @@ document.getElementById('goMultiplayerBtn').addEventListener('click', () => {
 function renderToggle(el, on) {
   el.classList.toggle('on', on);
 }
+const bgmToggle = document.getElementById('bgmToggle');
 const soundToggle = document.getElementById('soundToggle');
 const hapticsToggle = document.getElementById('hapticsToggle');
+
+renderToggle(bgmToggle, Settings.bgmOn);
 renderToggle(soundToggle, Settings.soundOn);
 renderToggle(hapticsToggle, Settings.hapticsOn);
+
+const bgmVolumeSlider = document.getElementById('bgmVolumeSlider');
+const seVolumeSlider = document.getElementById('seVolumeSlider');
+const bgmVolumeValue = document.getElementById('bgmVolumeValue');
+const seVolumeValue = document.getElementById('seVolumeValue');
+
+function renderAudioVolumes() {
+  const bgmPct = Math.round(Settings.bgmVolume * 100);
+  const sePct = Math.round(Settings.seVolume * 100);
+  bgmVolumeSlider.value = String(bgmPct);
+  seVolumeSlider.value = String(sePct);
+  bgmVolumeValue.textContent = `${bgmPct}%`;
+  seVolumeValue.textContent = `${sePct}%`;
+}
+renderAudioVolumes();
+
+bgmVolumeSlider.addEventListener('input', () => {
+  const v = Number(bgmVolumeSlider.value) / 100;
+  AudioManager.setVolume(v);
+  bgmVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+
+seVolumeSlider.addEventListener('input', () => {
+  const v = Number(seVolumeSlider.value) / 100;
+  Settings.setSeVolume(v);
+  seVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+seVolumeSlider.addEventListener('change', () => {
+  if (Settings.soundOn) SE.buttonTap();
+});
+
+bgmToggle.addEventListener('click', () => {
+  const next = !Settings.bgmOn;
+  AudioManager.setEnabled(next);
+  renderToggle(bgmToggle, Settings.bgmOn);
+  if (next) SE.buttonTap();
+  hapticFeedback('light');
+});
 
 soundToggle.addEventListener('click', () => {
   Settings.setSound(!Settings.soundOn);
@@ -341,12 +473,15 @@ soundToggle.addEventListener('click', () => {
   if (Settings.soundOn) SE.buttonTap();
   hapticFeedback('light');
 });
+
 hapticsToggle.addEventListener('click', () => {
   Settings.setHaptics(!Settings.hapticsOn);
   renderToggle(hapticsToggle, Settings.hapticsOn);
   SE.buttonTap();
   if (Settings.hapticsOn) hapticFeedback('medium');
 });
+
+AudioManager.setScene('home');
 
 /* ---------- 画像アセットは外部PNGファイルを参照 ---------- */
 </script>

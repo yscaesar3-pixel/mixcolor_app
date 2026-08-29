@@ -191,6 +191,55 @@
     flex:1; padding:15px; border:2px solid #E4E4EC; border-radius:999px; font-weight:900; font-size:14px;
     color: var(--ink); background: white; cursor:pointer;
   }
+
+  /* ---------- 音・振動設定 ---------- */
+  .audio-settings-fab{
+    position:fixed; right:14px; bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    width:46px; height:46px; border:none; border-radius:50%;
+    background:#FFFFFF; color:var(--ink); box-shadow:0 6px 18px rgba(30,30,46,0.18);
+    font-size:20px; cursor:pointer; z-index:1300;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .audio-settings-overlay{
+    position:fixed; inset:0; z-index:1400; background:rgba(20,20,35,0.38);
+    display:none; align-items:center; justify-content:center;
+    padding:20px calc(18px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .audio-settings-overlay.open{ display:flex; }
+  .audio-settings-card{
+    width:min(100%,420px); background:#FFFFFF; border-radius:26px;
+    box-shadow:0 18px 50px rgba(20,20,35,0.22); padding:18px;
+  }
+  .audio-settings-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+  }
+  .audio-settings-title{font-weight:900;font-size:18px;}
+  .audio-settings-close{
+    width:36px;height:36px;border:none;border-radius:50%;background:#F2F2F7;
+    font-size:20px;font-weight:900;cursor:pointer;
+  }
+  .audio-setting-row{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:14px 2px; border-bottom:1px solid #F0F0F5;
+  }
+  .audio-setting-row.stack{display:block;}
+  .audio-setting-label{font-size:14px;font-weight:900;}
+  .audio-setting-sub{font-size:11px;color:var(--sub-ink);font-weight:700;margin-top:3px;}
+  .audio-toggle{
+    width:52px;height:30px;border:none;border-radius:999px;background:#E4E4EC;
+    position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s ease;
+  }
+  .audio-toggle::after{
+    content:'';position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s ease;
+  }
+  .audio-toggle.on{background:linear-gradient(90deg,var(--magenta),var(--purple));}
+  .audio-toggle.on::after{transform:translateX(22px);}
+  .audio-range-wrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .audio-range{width:100%;accent-color:var(--purple);}
+  .audio-range-value{width:42px;text-align:right;font-size:12px;font-weight:900;color:var(--purple);}
+  .audio-settings-note{font-size:10px;color:var(--sub-ink);font-weight:700;line-height:1.5;margin-top:12px;}
+
 </style>
 </head>
 <body>
@@ -260,62 +309,325 @@
   </div>
 </div>
 
+
+  <button class="audio-settings-fab" id="audioSettingsBtn" aria-label="音・振動設定">⚙️</button>
+  <div class="audio-settings-overlay" id="audioSettingsOverlay" aria-hidden="true">
+    <div class="audio-settings-card" role="dialog" aria-modal="true" aria-labelledby="audioSettingsTitle">
+      <div class="audio-settings-head">
+        <div class="audio-settings-title" id="audioSettingsTitle">音・振動設定</div>
+        <button class="audio-settings-close" id="audioSettingsClose" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">BGM</div>
+          <div class="audio-setting-sub">ゲーム中の音楽</div>
+        </div>
+        <button class="audio-toggle" id="audioBgmToggle" aria-label="BGM ON/OFF"></button>
+      </div>
+      <div class="audio-setting-row stack">
+        <div class="audio-setting-label">BGM音量</div>
+        <div class="audio-range-wrap">
+          <input class="audio-range" id="audioBgmVolume" type="range" min="0" max="100" step="5">
+          <span class="audio-range-value" id="audioBgmVolumeValue">25%</span>
+        </div>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">効果音</div>
+          <div class="audio-setting-sub">ボタン・MIX・結果音</div>
+        </div>
+        <button class="audio-toggle" id="audioSeToggle" aria-label="効果音 ON/OFF"></button>
+      </div>
+      <div class="audio-setting-row stack">
+        <div class="audio-setting-label">効果音量</div>
+        <div class="audio-range-wrap">
+          <input class="audio-range" id="audioSeVolume" type="range" min="0" max="100" step="5">
+          <span class="audio-range-value" id="audioSeVolumeValue">65%</span>
+        </div>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">振動</div>
+          <div class="audio-setting-sub">iPhoneのHaptics</div>
+        </div>
+        <button class="audio-toggle" id="audioHapticsToggle" aria-label="振動 ON/OFF"></button>
+      </div>
+      <div class="audio-settings-note">設定はこの端末に保存されます。振動の強さはiOS側の仕様に合わせ、アプリではON/OFFのみです。</div>
+    </div>
+  </div>
+
+
 <script>
 const STANDARD_BG_FILE = 'mixcolor_single_standard_background.jpg';
 
+
 /* =========================================================
-   SE / Haptics (44章/49章/50章) - phase6のモジュールと同一仕様の簡易版
+   AUDIO / HAPTICS
+   ホーム・マルチプレイと共通の localStorage 設定を使用
    ========================================================= */
+const LS_BGM = 'mixcolor_settings_bgm';
 const LS_SOUND = 'mixcolor_settings_sound';
 const LS_HAPTICS = 'mixcolor_settings_haptics';
+const LS_BGM_VOLUME = 'mixcolor_settings_bgm_volume';
+const LS_SE_VOLUME = 'mixcolor_settings_se_volume';
+
 const SettingsFlags = {
+  bgmOn: localStorage.getItem(LS_BGM) !== 'off',
   soundOn: localStorage.getItem(LS_SOUND) !== 'off',
   hapticsOn: localStorage.getItem(LS_HAPTICS) !== 'off',
+  bgmVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_BGM_VOLUME) ?? 0.25))),
+  seVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_SE_VOLUME) ?? 0.65))),
 };
-let audioCtx = null;
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
+
+function setBgmEnabled(on) {
+  SettingsFlags.bgmOn = !!on;
+  localStorage.setItem(LS_BGM, on ? 'on' : 'off');
+  if (!on) {
+    bgmHome.pause();
+    bgmGame.pause();
+  } else {
+    switchBgm(desiredBgm || 'home');
+  }
 }
-function playTone(freqStart, freqEnd, durationMs, type = 'sine', gainPeak = 0.18) {
-  if (!SettingsFlags.soundOn) return;
+function setSoundEnabled(on) {
+  SettingsFlags.soundOn = !!on;
+  localStorage.setItem(LS_SOUND, on ? 'on' : 'off');
+}
+function setHapticsEnabled(on) {
+  SettingsFlags.hapticsOn = !!on;
+  localStorage.setItem(LS_HAPTICS, on ? 'on' : 'off');
+}
+function setBgmVolume(v) {
+  BGM_VOLUME = Math.max(0, Math.min(1, Number(v)));
+  SettingsFlags.bgmVolume = BGM_VOLUME;
+  localStorage.setItem(LS_BGM_VOLUME, String(BGM_VOLUME));
+  bgmHome.volume = BGM_VOLUME;
+  bgmGame.volume = BGM_VOLUME;
+}
+function setSeVolume(v) {
+  SE_VOLUME = Math.max(0, Math.min(1, Number(v)));
+  SettingsFlags.seVolume = SE_VOLUME;
+  localStorage.setItem(LS_SE_VOLUME, String(SE_VOLUME));
+}
+
+let BGM_VOLUME = SettingsFlags.bgmVolume;
+let SE_VOLUME = SettingsFlags.seVolume;
+
+const bgmHome = new Audio('bgm_home.mp3');
+const bgmGame = new Audio('bgm_game.mp3');
+[bgmHome, bgmGame].forEach(a => {
+  a.loop = true;
+  a.preload = 'auto';
+  a.volume = BGM_VOLUME;
+});
+
+const seFiles = {
+  tap: 'se_tap.mp3',
+  select: 'se_select.mp3',
+  mix: 'se_mix.mp3',
+  result: 'se_result.mp3',
+  countdown: 'se_countdown.mp3',
+  start: 'se_start.mp3',
+  perfect: 'se_perfect.mp3',
+  final: 'se_final.mp3',
+};
+
+const seAudio = {};
+Object.entries(seFiles).forEach(([key, src]) => {
+  const a = new Audio(src);
+  a.preload = 'auto';
+  a.volume = SE_VOLUME;
+  seAudio[key] = a;
+});
+
+let audioUnlocked = false;
+let desiredBgm = null;
+
+function safePlay(audio) {
+  if (!audio) return;
   try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(freqStart, now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), now + durationMs / 1000);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(gainPeak, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + durationMs / 1000);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + durationMs / 1000 + 0.02);
+    audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch (e) {}
 }
-const SE = {
-  mix: () => playTone(300, 900, 260, 'triangle', 0.2),
-  clear: () => playTone(600, 800, 150, 'sine', 0.16),
-  good: () => playTone(700, 1000, 180, 'sine', 0.18),
-  great: () => { playTone(700, 1050, 140, 'sine', 0.18); setTimeout(() => playTone(1050, 1300, 160, 'sine', 0.18), 100); },
-  perfect: () => { [0, 90, 180].forEach((d, i) => setTimeout(() => playTone(700 + i * 220, 1000 + i * 260, 180, 'sine', 0.2), d)); },
-  miss: () => playTone(220, 140, 220, 'sawtooth', 0.12),
-};
-function hapticFeedback(kind) {
-  if (!SettingsFlags.hapticsOn || !('vibrate' in navigator)) return;
-  const patterns = { light: 8, medium: 20, success: [15, 30, 15], failure: 40 };
-  try { navigator.vibrate(patterns[kind] ?? 10); } catch (e) {}
+
+function playSe(name) {
+  if (!SettingsFlags.soundOn) return;
+  const src = seAudio[name];
+  if (!src) return;
+  try {
+    const a = src.cloneNode();
+    a.volume = SE_VOLUME;
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (e) {}
 }
-function playResultFeedback(label) {
-  if (label === 'PERFECT') { SE.perfect(); hapticFeedback('success'); }
-  else if (label === 'GREAT') { SE.great(); hapticFeedback('success'); }
-  else if (label === 'GOOD') { SE.good(); hapticFeedback('light'); }
-  else if (label === 'CLEAR') { SE.clear(); hapticFeedback('light'); }
-  else { SE.miss(); hapticFeedback('failure'); }
+
+function switchBgm(kind) {
+  desiredBgm = kind;
+  bgmHome.pause();
+  bgmGame.pause();
+  if (!SettingsFlags.bgmOn || !audioUnlocked) return;
+
+  const target = kind === 'game' ? bgmGame : bgmHome;
+  try {
+    const p = target.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (e) {}
 }
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+
+  // iOS の自動再生制限対策。ユーザー操作後に希望BGMを開始する。
+  const target = desiredBgm === 'game' ? bgmGame : bgmHome;
+  if (SettingsFlags.bgmOn && target) {
+    try {
+      const p = target.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) {}
+  }
+}
+
+['pointerdown', 'touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, unlockAudio, { once: true, capture: true });
+});
+
+async function hapticFeedback(kind) {
+  if (!SettingsFlags.hapticsOn) return;
+
+  try {
+    const Haptics = window.Capacitor?.Plugins?.Haptics;
+    if (Haptics) {
+      if (kind === 'success' && Haptics.notification) {
+        await Haptics.notification({ type: 'SUCCESS' });
+        return;
+      }
+      if (kind === 'failure' && Haptics.notification) {
+        await Haptics.notification({ type: 'WARNING' });
+        return;
+      }
+      if (Haptics.impact) {
+        await Haptics.impact({
+          style: kind === 'medium' ? 'MEDIUM' : 'LIGHT'
+        });
+        return;
+      }
+    }
+  } catch (e) {}
+
+  // ブラウザ確認用フォールバック
+  if ('vibrate' in navigator) {
+    const patterns = {
+      light: 8,
+      medium: 20,
+      success: [15, 30, 15],
+      failure: 40,
+    };
+    try { navigator.vibrate(patterns[kind] ?? 10); } catch (e) {}
+  }
+}
+
+function playResultFeedback(label, extraFailure = false) {
+  if (label === 'PERFECT') {
+    playSe('perfect');
+    hapticFeedback('success');
+  } else {
+    playSe('result');
+    hapticFeedback(label === 'MISS' ? 'failure' : 'light');
+  }
+
+  if (extraFailure) {
+    setTimeout(() => hapticFeedback('failure'), 220);
+  }
+}
+
+
+
+/* ---------- 音・振動設定モーダル ---------- */
+const audioSettingsBtn = document.getElementById('audioSettingsBtn');
+const audioSettingsOverlay = document.getElementById('audioSettingsOverlay');
+const audioSettingsClose = document.getElementById('audioSettingsClose');
+const audioBgmToggle = document.getElementById('audioBgmToggle');
+const audioSeToggle = document.getElementById('audioSeToggle');
+const audioHapticsToggle = document.getElementById('audioHapticsToggle');
+const audioBgmVolume = document.getElementById('audioBgmVolume');
+const audioSeVolume = document.getElementById('audioSeVolume');
+const audioBgmVolumeValue = document.getElementById('audioBgmVolumeValue');
+const audioSeVolumeValue = document.getElementById('audioSeVolumeValue');
+
+function renderAudioSettings() {
+  audioBgmToggle.classList.toggle('on', SettingsFlags.bgmOn);
+  audioSeToggle.classList.toggle('on', SettingsFlags.soundOn);
+  audioHapticsToggle.classList.toggle('on', SettingsFlags.hapticsOn);
+  const bgmPct = Math.round((SettingsFlags.bgmVolume) * 100);
+  const sePct = Math.round((SettingsFlags.seVolume) * 100);
+  audioBgmVolume.value = String(bgmPct);
+  audioSeVolume.value = String(sePct);
+  audioBgmVolumeValue.textContent = `${bgmPct}%`;
+  audioSeVolumeValue.textContent = `${sePct}%`;
+}
+
+function openAudioSettings() {
+  renderAudioSettings();
+  audioSettingsOverlay.classList.add('open');
+  audioSettingsOverlay.setAttribute('aria-hidden', 'false');
+}
+function closeAudioSettings() {
+  audioSettingsOverlay.classList.remove('open');
+  audioSettingsOverlay.setAttribute('aria-hidden', 'true');
+}
+
+audioSettingsBtn.addEventListener('click', () => {
+  playSe('tap');
+  hapticFeedback('light');
+  openAudioSettings();
+});
+audioSettingsClose.addEventListener('click', () => {
+  playSe('tap');
+  closeAudioSettings();
+});
+audioSettingsOverlay.addEventListener('click', (e) => {
+  if (e.target === audioSettingsOverlay) closeAudioSettings();
+});
+
+audioBgmToggle.addEventListener('click', () => {
+  const next = !(SettingsFlags.bgmOn);
+  setBgmEnabled(next);
+  renderAudioSettings();
+});
+audioSeToggle.addEventListener('click', () => {
+  const next = !(SettingsFlags.soundOn);
+  setSoundEnabled(next);
+  renderAudioSettings();
+  if (next) playSe('tap');
+});
+audioHapticsToggle.addEventListener('click', () => {
+  const next = !(SettingsFlags.hapticsOn);
+  setHapticsEnabled(next);
+  renderAudioSettings();
+  if (next) hapticFeedback('medium');
+});
+
+audioBgmVolume.addEventListener('input', () => {
+  const v = Number(audioBgmVolume.value) / 100;
+  setBgmVolume(v);
+  audioBgmVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+audioSeVolume.addEventListener('input', () => {
+  const v = Number(audioSeVolume.value) / 100;
+  setSeVolume(v);
+  audioSeVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+audioSeVolume.addEventListener('change', () => {
+  if (SettingsFlags.soundOn) playSe('tap');
+});
+renderAudioSettings();
 
 /* =========================================================
    0. GENERATOR CONFIG (TUNABLE)
@@ -551,6 +863,7 @@ function showScreen(name) {
   document.getElementById('standardBgLayer').classList.toggle('active', name === 'diffSelect');
   const titles = { diffSelect: '', play: 'SINGLE PLAY', stageResult: 'STAGE RESULT', runResult: 'RUN RESULT' };
   document.getElementById('screenTitle').textContent = titles[name];
+  switchBgm(name === 'diffSelect' || name === 'runResult' ? 'home' : 'game');
 }
 
 function renderDiffSelect() {
@@ -575,7 +888,7 @@ function renderDiffSelect() {
       </div>
       ${!unlocked ? '<div class="lock-icon">🔒</div>' : ''}
     `;
-    if (unlocked) btn.onclick = () => startRun(lv.id);
+    if (unlocked) btn.onclick = () => { playSe('tap'); hapticFeedback('light'); startRun(lv.id); };
     list.appendChild(btn);
   });
 }
@@ -584,6 +897,8 @@ function renderDiffSelect() {
    7. RUN / STAGE FLOW
    ========================================================= */
 function startRun(levelId) {
+  playSe('start');
+  hapticFeedback('medium');
   app.levelId = levelId;
   app.stageIndex = 0;
   app.runStageResults = [];
@@ -638,6 +953,8 @@ function renderPlay() {
 }
 
 function onCardTap(cardId) {
+  playSe('select');
+  hapticFeedback('light');
   const q = app.stageQuestion;
   const idx = app.selectedIds.indexOf(cardId);
   if (idx >= 0) app.selectedIds.splice(idx, 1);
@@ -653,7 +970,7 @@ function onMix() {
   const label = matchLabel(match);
   const score = Math.round(match * 10);
 
-  SE.mix();
+  playSe('mix');
   hapticFeedback('medium');
 
   app.lastStageResult = { mixed, match, label, score };
@@ -681,6 +998,8 @@ function renderStageResult() {
   const nextBtn = document.getElementById('nextStageBtn');
   nextBtn.textContent = isLastStage ? 'ラン結果を見る' : 'つぎのステージへ';
   nextBtn.onclick = () => {
+    playSe('tap');
+    hapticFeedback('light');
     if (isLastStage) {
       finishRun();
     } else {
@@ -711,6 +1030,8 @@ function finishRun() {
   }
 
   showScreen('runResult');
+  playSe('final');
+  hapticFeedback('success');
   document.getElementById('runTotalScore').textContent = total;
   document.getElementById('newRecordBadge').style.display = isNewRecord ? '' : 'none';
 
@@ -732,11 +1053,13 @@ function finishRun() {
   });
 
   document.getElementById('bestNote').textContent = `自己ベスト: ${Math.max(total, prevBest)} / 10000`;
-  document.getElementById('toMenuBtn').onclick = () => { showScreen('diffSelect'); renderDiffSelect(); };
-  document.getElementById('retryBtn').onclick = () => startRun(app.levelId);
+  document.getElementById('toMenuBtn').onclick = () => { playSe('tap'); hapticFeedback('light'); showScreen('diffSelect'); renderDiffSelect(); };
+  document.getElementById('retryBtn').onclick = () => { playSe('tap'); hapticFeedback('light'); startRun(app.levelId); };
 }
 
 document.getElementById('backBtn').onclick = () => {
+  playSe('tap');
+  hapticFeedback('light');
   if (app.screen === 'play' || app.screen === 'stageResult') {
     if (confirm('シングルプレイを中断してホームに戻りますか？（このランのスコアは記録されません）')) {
       window.location.href = 'index.html';
@@ -750,7 +1073,7 @@ document.getElementById('backBtn').onclick = () => {
    INIT
    ========================================================= */
 document.getElementById('standardBgLayer').style.backgroundImage = `url(${STANDARD_BG_FILE})`;
-document.getElementById('homeBtnSingle').onclick = () => { window.location.href = 'index.html'; };
+document.getElementById('homeBtnSingle').onclick = () => { playSe('tap'); hapticFeedback('light'); window.location.href = 'index.html'; };
 showScreen('diffSelect');
 renderDiffSelect();
 </script>

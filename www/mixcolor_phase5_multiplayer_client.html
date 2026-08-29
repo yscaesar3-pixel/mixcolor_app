@@ -135,6 +135,55 @@
   .final-name{ font-weight:800; font-size:13px; flex:1; }
   .final-score{ font-weight:900; font-size:14px; }
   .final-btn-row{ display:flex; gap:10px; margin-top:16px; }
+
+  /* ---------- 音・振動設定 ---------- */
+  .audio-settings-fab{
+    position:fixed; right:14px; bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    width:46px; height:46px; border:none; border-radius:50%;
+    background:#FFFFFF; color:var(--ink); box-shadow:0 6px 18px rgba(30,30,46,0.18);
+    font-size:20px; cursor:pointer; z-index:1300;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .audio-settings-overlay{
+    position:fixed; inset:0; z-index:1400; background:rgba(20,20,35,0.38);
+    display:none; align-items:center; justify-content:center;
+    padding:20px calc(18px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .audio-settings-overlay.open{ display:flex; }
+  .audio-settings-card{
+    width:min(100%,420px); background:#FFFFFF; border-radius:26px;
+    box-shadow:0 18px 50px rgba(20,20,35,0.22); padding:18px;
+  }
+  .audio-settings-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+  }
+  .audio-settings-title{font-weight:900;font-size:18px;}
+  .audio-settings-close{
+    width:36px;height:36px;border:none;border-radius:50%;background:#F2F2F7;
+    font-size:20px;font-weight:900;cursor:pointer;
+  }
+  .audio-setting-row{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:14px 2px; border-bottom:1px solid #F0F0F5;
+  }
+  .audio-setting-row.stack{display:block;}
+  .audio-setting-label{font-size:14px;font-weight:900;}
+  .audio-setting-sub{font-size:11px;color:var(--sub-ink);font-weight:700;margin-top:3px;}
+  .audio-toggle{
+    width:52px;height:30px;border:none;border-radius:999px;background:#E4E4EC;
+    position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s ease;
+  }
+  .audio-toggle::after{
+    content:'';position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s ease;
+  }
+  .audio-toggle.on{background:linear-gradient(90deg,var(--magenta),var(--purple));}
+  .audio-toggle.on::after{transform:translateX(22px);}
+  .audio-range-wrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .audio-range{width:100%;accent-color:var(--purple);}
+  .audio-range-value{width:42px;text-align:right;font-size:12px;font-weight:900;color:var(--purple);}
+  .audio-settings-note{font-size:10px;color:var(--sub-ink);font-weight:700;line-height:1.5;margin-top:12px;}
+
 </style>
 </head>
 <body>
@@ -288,6 +337,57 @@
   </div>
 </div>
 
+
+  <button class="audio-settings-fab" id="audioSettingsBtn" aria-label="音・振動設定">⚙️</button>
+  <div class="audio-settings-overlay" id="audioSettingsOverlay" aria-hidden="true">
+    <div class="audio-settings-card" role="dialog" aria-modal="true" aria-labelledby="audioSettingsTitle">
+      <div class="audio-settings-head">
+        <div class="audio-settings-title" id="audioSettingsTitle">音・振動設定</div>
+        <button class="audio-settings-close" id="audioSettingsClose" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">BGM</div>
+          <div class="audio-setting-sub">ゲーム中の音楽</div>
+        </div>
+        <button class="audio-toggle" id="audioBgmToggle" aria-label="BGM ON/OFF"></button>
+      </div>
+      <div class="audio-setting-row stack">
+        <div class="audio-setting-label">BGM音量</div>
+        <div class="audio-range-wrap">
+          <input class="audio-range" id="audioBgmVolume" type="range" min="0" max="100" step="5">
+          <span class="audio-range-value" id="audioBgmVolumeValue">25%</span>
+        </div>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">効果音</div>
+          <div class="audio-setting-sub">ボタン・MIX・結果音</div>
+        </div>
+        <button class="audio-toggle" id="audioSeToggle" aria-label="効果音 ON/OFF"></button>
+      </div>
+      <div class="audio-setting-row stack">
+        <div class="audio-setting-label">効果音量</div>
+        <div class="audio-range-wrap">
+          <input class="audio-range" id="audioSeVolume" type="range" min="0" max="100" step="5">
+          <span class="audio-range-value" id="audioSeVolumeValue">65%</span>
+        </div>
+      </div>
+
+      <div class="audio-setting-row">
+        <div>
+          <div class="audio-setting-label">振動</div>
+          <div class="audio-setting-sub">iPhoneのHaptics</div>
+        </div>
+        <button class="audio-toggle" id="audioHapticsToggle" aria-label="振動 ON/OFF"></button>
+      </div>
+      <div class="audio-settings-note">設定はこの端末に保存されます。振動の強さはiOS側の仕様に合わせ、アプリではON/OFFのみです。</div>
+    </div>
+  </div>
+
+
 <script type="module">
 const SUPABASE_URL = 'https://arpkjnbnyyytdcbzeitk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFycGtqbmJueXl5dGRjYnplaXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MDk1NTgsImV4cCI6MjA5OTM4NTU1OH0.wMED0yZ1j6ygAIIPr5zw9As25xx9QqL0YbSICaK6UVo';
@@ -297,6 +397,240 @@ const LS_ROOM_ID = 'mixcolor_mp_roomId';
 const LS_PLAYER_ID = 'mixcolor_mp_playerId';
 const LS_RECONNECT_TOKEN = 'mixcolor_mp_reconnectToken';
 const LS_LAST_NAME = 'mixcolor_mp_lastName';
+
+
+const LS_BGM = 'mixcolor_settings_bgm';
+const LS_SOUND = 'mixcolor_settings_sound';
+const LS_HAPTICS = 'mixcolor_settings_haptics';
+const LS_BGM_VOLUME = 'mixcolor_settings_bgm_volume';
+const LS_SE_VOLUME = 'mixcolor_settings_se_volume';
+
+const Settings = {
+  bgmOn: localStorage.getItem(LS_BGM) !== 'off',
+  soundOn: localStorage.getItem(LS_SOUND) !== 'off',
+  hapticsOn: localStorage.getItem(LS_HAPTICS) !== 'off',
+  bgmVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_BGM_VOLUME) ?? 0.25))),
+  seVolume: Math.max(0, Math.min(1, Number(localStorage.getItem(LS_SE_VOLUME) ?? 0.65))),
+  setBgm(on) { this.bgmOn = on; localStorage.setItem(LS_BGM, on ? 'on' : 'off'); },
+  setSound(on) { this.soundOn = on; localStorage.setItem(LS_SOUND, on ? 'on' : 'off'); },
+  setHaptics(on) { this.hapticsOn = on; localStorage.setItem(LS_HAPTICS, on ? 'on' : 'off'); },
+  setBgmVolume(v) { this.bgmVolume = Math.max(0, Math.min(1, Number(v))); localStorage.setItem(LS_BGM_VOLUME, String(this.bgmVolume)); },
+  setSeVolume(v) { this.seVolume = Math.max(0, Math.min(1, Number(v))); localStorage.setItem(LS_SE_VOLUME, String(this.seVolume)); },
+};
+
+const AudioManager = (() => {
+  const tracks = {
+    home: new Audio('bgm_home.mp3'),
+    game: new Audio('bgm_game.mp3'),
+  };
+  Object.values(tracks).forEach(a => {
+    a.loop = true;
+    a.preload = 'auto';
+    a.volume = Settings.bgmVolume;
+  });
+
+  let unlocked = false;
+  let desired = 'home';
+  let current = null;
+
+  function playDesired() {
+    if (!unlocked || !Settings.bgmOn || document.hidden) return;
+    const next = tracks[desired];
+    if (!next) return;
+    if (current && current !== next) current.pause();
+    current = next;
+    if (next.paused) next.play().catch(() => {});
+  }
+
+  function unlock() {
+    unlocked = true;
+    playDesired();
+  }
+
+  function setScene(scene) {
+    desired = scene === 'game' ? 'game' : 'home';
+    if (!Settings.bgmOn) {
+      Object.values(tracks).forEach(a => a.pause());
+      return;
+    }
+    playDesired();
+  }
+
+  function stopAll() {
+    Object.values(tracks).forEach(a => a.pause());
+    current = null;
+  }
+
+  document.addEventListener('pointerdown', unlock, { capture: true, once: true });
+  document.addEventListener('touchstart', unlock, { capture: true, once: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopAll();
+    else playDesired();
+  });
+
+  function setEnabled(on) {
+    Settings.setBgm(on);
+    if (!on) stopAll();
+    else playDesired();
+  }
+
+  function setVolume(v) {
+    Settings.setBgmVolume(v);
+    Object.values(tracks).forEach(a => { a.volume = Settings.bgmVolume; });
+  }
+
+  return { setScene, setEnabled, setVolume, stopAll, unlock };
+})();
+
+const SE_SOURCES = {
+  tap: 'se_tap.mp3',
+  select: 'se_select.mp3',
+  mix: 'se_mix.mp3',
+  result: 'se_result.mp3',
+  countdown: 'se_countdown.mp3',
+  start: 'se_start.mp3',
+  perfect: 'se_perfect.mp3',
+  final: 'se_final.mp3',
+};
+
+const seTemplates = {};
+Object.entries(SE_SOURCES).forEach(([key, src]) => {
+  const a = new Audio(src);
+  a.preload = 'auto';
+  seTemplates[key] = a;
+});
+
+function playSE(key, volume = 0.65) {
+  if (!Settings.soundOn) return;
+  const template = seTemplates[key];
+  if (!template) return;
+  try {
+    const a = template.cloneNode(true);
+    a.volume = Math.max(0, Math.min(1, volume * (Settings.seVolume / 0.65)));
+    a.play().catch(() => {});
+  } catch (_) {}
+}
+
+const SE = {
+  tap: () => playSE('tap', 0.55),
+  select: () => playSE('select', 0.58),
+  mix: () => playSE('mix', 0.68),
+  result: () => playSE('result', 0.62),
+  countdown: () => playSE('countdown', 0.58),
+  start: () => playSE('start', 0.68),
+  perfect: () => playSE('perfect', 0.72),
+  final: () => playSE('final', 0.68),
+};
+
+function hapticFeedback(kind = 'light') {
+  if (!Settings.hapticsOn) return;
+
+  const capHaptics = window.Capacitor?.Plugins?.Haptics;
+  if (capHaptics) {
+    try {
+      if (kind === 'success') {
+        capHaptics.notification({ type: 'SUCCESS' }).catch(() => {});
+      } else if (kind === 'failure') {
+        capHaptics.notification({ type: 'WARNING' }).catch(() => {});
+      } else {
+        capHaptics.impact({ style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' }).catch(() => {});
+      }
+      return;
+    } catch (_) {}
+  }
+
+  if ('vibrate' in navigator) {
+    const fallback = {
+      light: 8,
+      medium: 20,
+      success: [15, 30, 15],
+      failure: 40,
+    };
+    try { navigator.vibrate(fallback[kind] ?? 8); } catch (_) {}
+  }
+}
+
+
+/* ---------- 音・振動設定モーダル ---------- */
+const audioSettingsBtn = document.getElementById('audioSettingsBtn');
+const audioSettingsOverlay = document.getElementById('audioSettingsOverlay');
+const audioSettingsClose = document.getElementById('audioSettingsClose');
+const audioBgmToggle = document.getElementById('audioBgmToggle');
+const audioSeToggle = document.getElementById('audioSeToggle');
+const audioHapticsToggle = document.getElementById('audioHapticsToggle');
+const audioBgmVolume = document.getElementById('audioBgmVolume');
+const audioSeVolume = document.getElementById('audioSeVolume');
+const audioBgmVolumeValue = document.getElementById('audioBgmVolumeValue');
+const audioSeVolumeValue = document.getElementById('audioSeVolumeValue');
+
+function renderAudioSettings() {
+  audioBgmToggle.classList.toggle('on', Settings.bgmOn);
+  audioSeToggle.classList.toggle('on', Settings.soundOn);
+  audioHapticsToggle.classList.toggle('on', Settings.hapticsOn);
+  const bgmPct = Math.round((Settings.bgmVolume) * 100);
+  const sePct = Math.round((Settings.seVolume) * 100);
+  audioBgmVolume.value = String(bgmPct);
+  audioSeVolume.value = String(sePct);
+  audioBgmVolumeValue.textContent = `${bgmPct}%`;
+  audioSeVolumeValue.textContent = `${sePct}%`;
+}
+
+function openAudioSettings() {
+  renderAudioSettings();
+  audioSettingsOverlay.classList.add('open');
+  audioSettingsOverlay.setAttribute('aria-hidden', 'false');
+}
+function closeAudioSettings() {
+  audioSettingsOverlay.classList.remove('open');
+  audioSettingsOverlay.setAttribute('aria-hidden', 'true');
+}
+
+audioSettingsBtn.addEventListener('click', () => {
+  SE.tap();
+  hapticFeedback('light');
+  openAudioSettings();
+});
+audioSettingsClose.addEventListener('click', () => {
+  SE.tap();
+  closeAudioSettings();
+});
+audioSettingsOverlay.addEventListener('click', (e) => {
+  if (e.target === audioSettingsOverlay) closeAudioSettings();
+});
+
+audioBgmToggle.addEventListener('click', () => {
+  const next = !(Settings.bgmOn);
+  AudioManager.setEnabled(next);
+  renderAudioSettings();
+});
+audioSeToggle.addEventListener('click', () => {
+  const next = !(Settings.soundOn);
+  Settings.setSound(next);
+  renderAudioSettings();
+  if (next) SE.tap();
+});
+audioHapticsToggle.addEventListener('click', () => {
+  const next = !(Settings.hapticsOn);
+  Settings.setHaptics(next);
+  renderAudioSettings();
+  if (next) hapticFeedback('medium');
+});
+
+audioBgmVolume.addEventListener('input', () => {
+  const v = Number(audioBgmVolume.value) / 100;
+  AudioManager.setVolume(v);
+  audioBgmVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+audioSeVolume.addEventListener('input', () => {
+  const v = Number(audioSeVolume.value) / 100;
+  Settings.setSeVolume(v);
+  audioSeVolumeValue.textContent = `${Math.round(v * 100)}%`;
+});
+audioSeVolume.addEventListener('change', () => {
+  if (Settings.soundOn) SE.tap();
+});
+renderAudioSettings();
+
 
 const state = {
   roomId: null,
@@ -321,6 +655,8 @@ const state = {
     resultRenderedRound: 0,
     readyBusy: false,
     finalShown: false,
+    countdownSeRound: 0,
+    resultSeRound: 0,
     revealTimeoutIds: [],
   },
 };
@@ -345,6 +681,14 @@ function showScreen(name) {
     const el = document.getElementById(id);
     if (el) el.style.display = id === name ? '' : 'none';
   });
+
+  const gameScreens = new Set([
+    'countdownScreen',
+    'roundPlayScreen',
+    'waitingScreen',
+    'roundRevealScreen',
+  ]);
+  AudioManager.setScene(gameScreens.has(name) ? 'game' : 'home');
 }
 function clearRoundTimers() {
   const mp = state.mp;
@@ -588,6 +932,11 @@ function beginRound(round) {
 }
 function runCountdown(startAtIso) {
   const startAt = new Date(startAtIso).getTime();
+  const roundNo = Number(state.mp.roundNumber || 0);
+  if (state.mp.countdownSeRound !== roundNo) {
+    state.mp.countdownSeRound = roundNo;
+    SE.countdown();
+  }
   const readyEl = document.getElementById('countdownReady');
   const numEl = document.getElementById('countdownNumber');
   numEl.classList.remove('countdown-go');
@@ -599,6 +948,8 @@ function runCountdown(startAtIso) {
       readyEl.style.display = 'none';
       numEl.textContent = 'START!';
       numEl.classList.add('countdown-go');
+      SE.start();
+      hapticFeedback('medium');
       const id = setTimeout(startPlaying, 350);
       state.mp.revealTimeoutIds.push(id);
       return;
@@ -627,6 +978,7 @@ function renderRoundPlay() {
     const slot = document.createElement('div');
     slot.style.cssText = 'position:relative;aspect-ratio:1/1;flex:0 0 calc(25% - 7.5px);max-width:calc(25% - 7.5px);min-width:0;';
     const btn = document.createElement('button');
+    btn.className = 'mp-color-card';
     const selected = state.mp.selectedIds.includes(card.id);
     btn.style.cssText = `width:100%;height:100%;border-radius:18px;border:none;cursor:pointer;background:${toHex(card)};box-shadow:0 3px 8px rgba(0,0,0,0.08);`;
     if (selected) { btn.style.outline = '3px solid var(--purple)'; btn.style.outlineOffset = '-3px'; btn.style.transform = 'translateY(-4px)'; }
@@ -641,6 +993,8 @@ function renderRoundPlay() {
 }
 function onCardTap(cardId) {
   if (state.mp.phase !== 'playing') return;
+  SE.select();
+  hapticFeedback('light');
   const q = state.mp.question;
   const idx = state.mp.selectedIds.indexOf(cardId);
   if (idx >= 0) state.mp.selectedIds.splice(idx,1);
@@ -661,6 +1015,7 @@ function runRoundTimer(deadlineAtIso) {
       state.mp.phase = 'waiting';
       showScreen('waitingScreen');
       renderWaitingProgress();
+      hapticFeedback('failure');
       tryAdvanceRound().catch(e => log('advance deadline', e));
     }
   };
@@ -669,6 +1024,8 @@ function runRoundTimer(deadlineAtIso) {
 }
 async function submitAnswer() {
   if (state.mp.phase !== 'playing') return;
+  SE.mix();
+  hapticFeedback('medium');
   const btn = document.getElementById('mpMixBtn');
   btn.disabled = true;
   try {
@@ -794,6 +1151,19 @@ try {
 }
 
 function renderRoundResult(data) {
+  const resultRoundNo = Number(data?.round?.roundNumber || 0);
+  if (state.mp.resultSeRound !== resultRoundNo) {
+    state.mp.resultSeRound = resultRoundNo;
+    SE.result();
+    const me = (data.players || []).find(p => p.playerId === state.playerId);
+    if (me && Number(me.matchPercent) === 100) {
+      setTimeout(() => {
+        SE.perfect();
+        hapticFeedback('success');
+      }, 220);
+    }
+  }
+
   const listEl = document.getElementById('revealList');
   const labelEl = document.getElementById('revealStepLabel');
   document.getElementById('revealTargetSwatch').style.background = toHex(data.round.target);
@@ -948,6 +1318,8 @@ async function ensureFinalResult() {
   let data;
   try { data = await callFunction('mixcolor-final-result', authBody()); }
   catch (e) { log('final-result', e); return; }
+  SE.final();
+  hapticFeedback('success');
   state.mp.finalShown = true;
   renderFinal(data);
   showScreen('finalResultScreen');
@@ -1083,6 +1455,16 @@ document.getElementById('rematchBtn').onclick = async () => {
     btn.disabled = false;
   }
 };
+
+
+/* ---------- Common button feedback ---------- */
+document.addEventListener('click', (event) => {
+  const btn = event.target.closest('button');
+  if (!btn || btn.disabled) return;
+  if (btn.id === 'mpMixBtn' || btn.classList.contains('mp-color-card')) return;
+  SE.tap();
+  hapticFeedback('light');
+}, { capture: true });
 
 /* ---------- Reconnect ---------- */
 (async function init() {

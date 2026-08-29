@@ -240,6 +240,23 @@
   .audio-range-value{width:42px;text-align:right;font-size:12px;font-weight:900;color:var(--purple);}
   .audio-settings-note{font-size:10px;color:var(--sub-ink);font-weight:700;line-height:1.5;margin-top:12px;}
 
+
+  /* ---------- Native AdMob banner safe-area ---------- */
+  :root{ --mixcolor-ad-height:60px; }
+  body.mixcolor-ad-visible .audio-settings-fab{
+    bottom:calc(var(--mixcolor-ad-height) + 14px + env(safe-area-inset-bottom, 0px));
+  }
+  .ad-privacy-btn{
+    width:100%; padding:13px 14px; margin-top:14px;
+    border:2px solid #ECECF2; border-radius:14px;
+    background:#FFFFFF; color:var(--ink);
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+
+  body.mixcolor-ad-visible #app{
+    padding-bottom:calc(34px + var(--mixcolor-ad-height) + env(safe-area-inset-bottom, 0px));
+  }
+
 </style>
 </head>
 <body>
@@ -356,11 +373,21 @@
         <button class="audio-toggle" id="audioHapticsToggle" aria-label="振動 ON/OFF"></button>
       </div>
       <div class="audio-settings-note">設定はこの端末に保存されます。振動の強さはiOS側の仕様に合わせ、アプリではON/OFFのみです。</div>
+      <button class="ad-privacy-btn" id="adPrivacyBtn" style="display:none;">広告のプライバシー設定</button>
     </div>
   </div>
 
 
+<script src="mixcolor_ads.js"></script>
 <script>
+
+/* ---------- AdMob / UMP ---------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  MixColorAds.bindPrivacyButton('adPrivacyBtn');
+  await MixColorAds.init();
+  await MixColorAds.setBannerVisible(true); // 初期: 難易度選択
+});
+
 const STANDARD_BG_FILE = 'mixcolor_single_standard_background.jpg';
 
 
@@ -920,6 +947,7 @@ function showScreen(name) {
   const titles = { diffSelect: '', play: 'SINGLE PLAY', stageResult: 'STAGE RESULT', runResult: 'RUN RESULT' };
   document.getElementById('screenTitle').textContent = titles[name];
   switchBgm(name === 'diffSelect' || name === 'runResult' ? 'home' : 'game');
+  MixColorAds.setBannerVisible(name === 'diffSelect' || name === 'runResult').catch(() => {});
 }
 
 function renderDiffSelect() {

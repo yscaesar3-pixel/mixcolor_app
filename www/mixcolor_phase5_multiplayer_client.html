@@ -184,6 +184,23 @@
   .audio-range-value{width:42px;text-align:right;font-size:12px;font-weight:900;color:var(--purple);}
   .audio-settings-note{font-size:10px;color:var(--sub-ink);font-weight:700;line-height:1.5;margin-top:12px;}
 
+
+  /* ---------- Native AdMob banner safe-area ---------- */
+  :root{ --mixcolor-ad-height:60px; }
+  body.mixcolor-ad-visible .audio-settings-fab{
+    bottom:calc(var(--mixcolor-ad-height) + 14px + env(safe-area-inset-bottom, 0px));
+  }
+  .ad-privacy-btn{
+    width:100%; padding:13px 14px; margin-top:14px;
+    border:2px solid #ECECF2; border-radius:14px;
+    background:#FFFFFF; color:var(--ink);
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+
+  body.mixcolor-ad-visible #app{
+    padding-bottom:calc(34px + var(--mixcolor-ad-height) + env(safe-area-inset-bottom, 0px));
+  }
+
 </style>
 </head>
 <body>
@@ -384,11 +401,21 @@
         <button class="audio-toggle" id="audioHapticsToggle" aria-label="振動 ON/OFF"></button>
       </div>
       <div class="audio-settings-note">設定はこの端末に保存されます。振動の強さはiOS側の仕様に合わせ、アプリではON/OFFのみです。</div>
+      <button class="ad-privacy-btn" id="adPrivacyBtn" style="display:none;">広告のプライバシー設定</button>
     </div>
   </div>
 
 
+<script src="mixcolor_ads.js"></script>
 <script type="module">
+
+/* ---------- AdMob / UMP ---------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  MixColorAds.bindPrivacyButton('adPrivacyBtn');
+  await MixColorAds.init();
+  await MixColorAds.setBannerVisible(true); // 初期: エントリー画面
+});
+
 const SUPABASE_URL = 'https://arpkjnbnyyytdcbzeitk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFycGtqbmJueXl5dGRjYnplaXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MDk1NTgsImV4cCI6MjA5OTM4NTU1OH0.wMED0yZ1j6ygAIIPr5zw9As25xx9QqL0YbSICaK6UVo';
 const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
@@ -747,6 +774,15 @@ function showScreen(name) {
     'roundRevealScreen',
   ]);
   AudioManager.setScene(gameScreens.has(name) ? 'game' : 'home');
+
+  const bannerScreens = new Set([
+    'entryScreen',
+    'createScreen',
+    'joinScreen',
+    'lobbyScreen',
+    'finalResultScreen',
+  ]);
+  MixColorAds.setBannerVisible(bannerScreens.has(name)).catch(() => {});
 }
 function clearRoundTimers() {
   const mp = state.mp;

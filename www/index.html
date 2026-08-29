@@ -121,6 +121,28 @@
   .settings-value{ font-size:12px; font-weight:900; color:var(--purple); }
   .settings-range{ width:100%; accent-color:var(--purple); }
 
+
+  /* ---------- Native AdMob banner safe-area ---------- */
+  :root{ --mixcolor-ad-height:60px; }
+  body.mixcolor-ad-visible .audio-settings-fab{
+    bottom:calc(var(--mixcolor-ad-height) + 14px + env(safe-area-inset-bottom, 0px));
+  }
+  .ad-privacy-btn{
+    width:100%; padding:13px 14px; margin-top:14px;
+    border:2px solid #ECECF2; border-radius:14px;
+    background:#FFFFFF; color:var(--ink);
+    font-weight:800; font-size:13px; cursor:pointer;
+  }
+
+  body.mixcolor-ad-visible #homeScreen{
+    padding-bottom:calc(var(--mixcolor-ad-height) + 22px + env(safe-area-inset-bottom, 0px));
+  }
+  body.mixcolor-ad-visible .sub-screen{
+    padding-bottom:calc(var(--mixcolor-ad-height) + 22px + env(safe-area-inset-bottom, 0px));
+    overflow-y:auto;
+  }
+  body.mixcolor-native-ad #adBannerStub{ display:none; }
+
 </style>
 </head>
 <body class="ad-padded">
@@ -215,6 +237,7 @@
         <div class="settings-label">振動 (Haptics)</div>
         <button class="toggle" id="hapticsToggle"><div class="knob"></div></button>
       </div>
+      <button class="ad-privacy-btn" id="adPrivacyBtn" style="display:none;">広告のプライバシー設定</button>
       <div class="settings-note">
         BGM・効果音・振動の設定はこの端末に保存されます。<br><br>
         BGM：「パステルハウス」by かずち / 「SUMMER TRIANGLE」by しゃろう<br>
@@ -225,7 +248,23 @@
 
 </div>
 
+<script src="mixcolor_ads.js"></script>
 <script>
+
+/* ---------- AdMob / UMP ---------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  if (window.Capacitor && (
+      (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) ||
+      (typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() !== 'web')
+  )) {
+    document.body.classList.add('mixcolor-native-ad');
+  }
+
+  MixColorAds.bindPrivacyButton('adPrivacyBtn');
+  await MixColorAds.init();
+  await MixColorAds.setBannerVisible(true);
+});
+
 
 /* =========================================================
    Audio / Haptics

@@ -1093,7 +1093,7 @@ function onMix() {
   game.lastResult = { mixed, match, label, score, lifeLost, isCorrectChoice };
   showScreen('roundResult');
   renderRoundResult();
-  setTimeout(() => playResultFeedback(label, isCorrectChoice, lifeLost), 200);
+  setTimeout(() => playResultFeedback(label, isCorrectChoice, lifeLost), 60);
 }
 
 function renderRoundResult() {
@@ -1117,13 +1117,30 @@ function renderRoundResult() {
   }
 
   const nextBtn = document.getElementById('nextRoundBtn');
-  if (game.lives <= 0) {
-    nextBtn.textContent = 'GAME OVERを見る';
-    nextBtn.onclick = () => { playSe('tap'); hapticFeedback('light'); finishGame(); };
-  } else {
-    nextBtn.textContent = 'つぎのステージへ';
-    nextBtn.onclick = () => { playSe('tap'); hapticFeedback('light'); game.stage += 1; startRound(); };
-  }
+
+  let autoNextDone = false;
+  const goNextRoundFast = () => {
+    if (autoNextDone) return;
+    autoNextDone = true;
+    if (game.lives <= 0) {
+      finishGame();
+    } else {
+      game.stage += 1;
+      startRound();
+    }
+  };
+
+  nextBtn.textContent = game.lives <= 0 ? 'GAME OVERを見る' : 'つぎのステージへ';
+  nextBtn.onclick = () => {
+    playSe('tap');
+    hapticFeedback('light');
+    goNextRoundFast();
+  };
+
+  // テンポ改善: 結果を短く確認したら自動で次へ。
+  setTimeout(() => {
+    if (game.screen === 'roundResult') goNextRoundFast();
+  }, 1250);
 }
 
 function finishGame() {

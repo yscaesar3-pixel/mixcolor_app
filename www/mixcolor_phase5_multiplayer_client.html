@@ -93,7 +93,7 @@
   .reveal-list{ display:flex; flex-direction:column; gap:10px; }
   .reveal-row{
     display:flex; align-items:center; gap:12px; background:#F7F7F7; border-radius:16px; padding:10px 12px;
-    opacity:0; transform: translateY(8px); transition: opacity 0.35s ease, transform 0.35s ease;
+    opacity:0; transform: translateY(8px); transition: opacity 0.18s ease, transform 0.18s ease;
   }
   .reveal-row.show{ opacity:1; transform:translateY(0); }
   .reveal-row.me{ background:#F1E9FF; outline:2px solid var(--purple); }
@@ -827,7 +827,8 @@ async function callFunction(name, body) {
 function isHost() { return !!state.room && state.room.hostPlayerId === state.playerId; }
 function progressionDelayMs() {
   const idx = state.players.findIndex(p => p.id === state.playerId);
-  return Math.max(0, idx) * 450;
+  // テンポ改善: 旧450ms/人 → 35ms/人。8人でも最大245ms。
+  return Math.max(0, idx) * 35;
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -890,7 +891,7 @@ async function enterRoom(roomId, playerId) {
 }
 function startPolling() {
   stopPolling();
-  state.pollTimerId = setInterval(() => syncNow().catch(e => log('poll', e.message)), 900);
+  state.pollTimerId = setInterval(() => syncNow().catch(e => log('poll', e.message)), 350);
 }
 async function fetchLobbyState() {
   const data = await callFunction('mixcolor-lobby-state', authBody());
@@ -1044,7 +1045,7 @@ function runCountdown(startAtIso) {
       numEl.classList.add('countdown-go');
       SE.start();
       hapticFeedback('medium');
-      const id = setTimeout(startPlaying, 350);
+      const id = setTimeout(startPlaying, 100);
       state.mp.revealTimeoutIds.push(id);
       return;
     }
@@ -1275,7 +1276,7 @@ function renderRoundResult(data) {
       <div class="reveal-score">+${p.roundScore}</div>
       <div class="reveal-total">${p.totalScore}</div>`;
     listEl.appendChild(row);
-    const id = setTimeout(() => row.classList.add('show'), 100 * i);
+    const id = setTimeout(() => row.classList.add('show'), 45 * i);
     state.mp.revealTimeoutIds.push(id);
   });
 }
@@ -1394,7 +1395,7 @@ async function goNextRound() {
         return;
       }
 
-      await sleep(300);
+      await sleep(100);
     }
 
   } catch (e) {

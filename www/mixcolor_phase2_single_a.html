@@ -1065,7 +1065,7 @@ function onMix() {
 
   showScreen('stageResult');
   renderStageResult();
-  setTimeout(() => playResultFeedback(label, isCorrectChoice), 200);
+  setTimeout(() => playResultFeedback(label, isCorrectChoice), 60);
 }
 
 function renderStageResult() {
@@ -1084,9 +1084,11 @@ function renderStageResult() {
   const isLastStage = app.stageIndex === STAGES_PER_RUN - 1;
   const nextBtn = document.getElementById('nextStageBtn');
   nextBtn.textContent = isLastStage ? 'ラン結果を見る' : 'つぎのステージへ';
-  nextBtn.onclick = () => {
-    playSe('tap');
-    hapticFeedback('light');
+
+  let autoNextDone = false;
+  const goNextStageFast = () => {
+    if (autoNextDone) return;
+    autoNextDone = true;
     if (isLastStage) {
       finishRun();
     } else {
@@ -1094,6 +1096,18 @@ function renderStageResult() {
       nextStage();
     }
   };
+
+  nextBtn.onclick = () => {
+    playSe('tap');
+    hapticFeedback('light');
+    goNextStageFast();
+  };
+
+  // テンポ改善: 結果を短く確認したら自動で次へ。
+  // ボタンを押した場合は即時で進み、二重進行はしない。
+  setTimeout(() => {
+    if (app.screen === 'stageResult') goNextStageFast();
+  }, 1250);
 }
 
 function finishRun() {
